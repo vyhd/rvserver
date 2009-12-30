@@ -1,0 +1,19 @@
+AC_INIT(src/ChatServer.h)
+AM_INIT_AUTOMAKE(rvserver,0.1)
+AC_CONFIG_HEADER(src/config.h)
+
+AC_PROG_CC
+AC_PROG_CXX
+
+# If these aren't set, use our defaults
+test -z "$CFLAGS" && CFLAGS="-O3 -W -Wall"
+test -z "$CXXFLAGS" && CXXFLAGS="-O3 -W -Wall"
+
+AC_C_BIGENDIAN(
+	AC_DEFINE(ENDIAN_BIG, 1, [Big endian]),
+	AC_DEFINE(ENDIAN_LITTLE, 1, [Little endian]),
+	AC_MSG_ERROR([Can't determine endianness]) )
+
+AC_CONFIG_FILES(Makefile)
+AC_CONFIG_FILES(src/Makefile)
+AC_OUTPUT

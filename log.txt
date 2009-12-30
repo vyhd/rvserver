@@ -1,0 +1,102 @@
+[18:21:42] *** Log started on 12/28/09 ***
+[18:21:45] <no name>@76.212.226.129	1`Fire_Adept`password`0`0`0
+[18:21:45] Fire_Adept@76.212.226.129	0`_`_`0`0`0
+[18:21:47] Fire_Adept@76.212.226.129	3`_`hello`0`0`0
+[18:22:04] *** Log started on 12/28/09 ***
+[18:22:06] <no name>@76.212.226.129	1`Fire_Adept`dx`0`0`0
+[18:22:07] Fire_Adept@76.212.226.129	0`_`_`0`0`0
+[18:22:09] Fire_Adept@76.212.226.129	3`_`hellp`0`0`0
+[19:33:24] *** Log started on 12/28/09 ***
+[19:33:26] <no name>@76.212.226.129	1`Fire_Adept`test`0`0`0
+[19:33:27] Fire_Adept@76.212.226.129	0`_`_`0`0`0
+[19:33:33] *** Log started on 12/28/09 ***
+[19:33:38] <no name>@76.212.226.129	1`Fire_Adept`password`0`0`0
+[19:33:38] Fire_Adept@76.212.226.129	0`_`_`0`0`0
+[19:33:45] <no name>@76.212.226.129	1`asdf`asdf`0`0`0
+[19:33:45] asdf@76.212.226.129	0`_`_`0`0`0
+[19:33:48] Fire_Adept@76.212.226.129	6`_`asdf`0`0`0
+[19:34:03] Fire_Adept@76.212.226.129	6`_`Fire_Adept`0`0`0
+[19:34:08] <no name>@76.212.226.129	1`Fire_Adept`asdf`0`0`0
+[19:34:09] Fire_Adept@76.212.226.129	0`_`_`0`0`0
+[19:34:10] Fire_Adept@76.212.226.129	600`_`theme|Classic|red|0|green|0|blue|0|freezeChat|false|ignoreColors|false|timeStamp|false|beep|true|bleep|true|audio|true`0`0`0
+[19:35:59] <no name>@76.212.226.129	1`Fire_Adept`password`0`0`0
+[19:36:04] <no name>@76.212.226.129	1`Fire_Adept`asdf`0`0`0
+[19:36:49] *** Log started on 12/28/09 ***
+[19:36:52] <no name>@76.212.226.129	1`Fire_Adept`password`0`0`0
+[19:36:53] Fire_Adept@76.212.226.129	0`_`_`0`0`0
+[19:37:27] <no name>@68.62.73.142	1`Dragon`asdf`0`0`0
+[19:37:27] Dragon@68.62.73.142	0`_`_`0`0`0
+[19:37:38] Fire_Adept@76.212.226.129	3`_`'allo`0`0`0
+[19:37:41] Dragon@68.62.73.142	4`_`sends bad data.`0`0`0
+[19:37:43] Dragon@68.62.73.142	3`_`:V`0`0`0
+[19:37:44] Fire_Adept@76.212.226.129	6`_`Dragon`0`0`0
+[19:37:56] Fire_Adept@76.212.226.129	6`_`Fire_Adept`0`0`0
+[19:37:59] <no name>@68.62.73.142	1`Dragon`asdf`0`0`0
+[19:38:00] Dragon@68.62.73.142	0`_`_`0`0`0
+[19:38:00] <no name>@76.212.226.129	1`Fire_Adept`password`0`0`0
+[19:38:00] Fire_Adept@76.212.226.129	0`_`_`0`0`0
+[19:38:03] Fire_Adept@76.212.226.129	3`_`yeah, cool`0`0`0
+[19:38:05] Dragon@68.62.73.142	3`_`hater has to hate.`0`0`0
+[19:38:13] Fire_Adept@76.212.226.129	3`_`it always segfaulted whenever I kicked someone else, then myself`0`0`0
+[19:38:17] Fire_Adept@76.212.226.129	3`_`and now it doesn't :V`0`0`0
+[19:38:39] Dragon@68.62.73.142	3`_`Awesome.`0`0`0
+[19:39:02] Fire_Adept@76.212.226.129	6`_`Fire_Adept`0`0`0
+[19:39:08] <no name>@76.212.226.129	1`Fire_Adept`password`0`0`0
+[19:39:09] Fire_Adept@76.212.226.129	0`_`_`0`0`0
+[19:39:15] Fire_Adept@76.212.226.129	3`_`it is a little annoying that wall messages don't show, though`0`0`0
+[19:39:20] Fire_Adept@76.212.226.129	3`_`e.g. "Fire_Adept was kicked by Fire_Adept"`0`0`0
+[19:39:40] Dragon@68.62.73.142	3`_`hm.`0`0`0
+[19:40:18] Fire_Adept@76.212.226.129	3`_`reboot, will take a sec`0`0`0
+[19:41:09] *** Log started on 12/28/09 ***
+[19:41:11] <no name>@76.212.226.129	1`Fire_Adept`password`0`0`0
+[19:41:12] Fire_Adept@76.212.226.129	0`_`_`0`0`0
+[19:43:16] <no name>@121.209.6.50	1`Garth`test`0`0`0
+[19:43:17] Garth@121.209.6.50	0`_`_`0`0`0
+[19:43:22] Garth@121.209.6.50	3`_`HELLO`0`0`0
+[19:43:30] Fire_Adept@76.212.226.129	3`_`OH HEY SUP`0`0`0
+[19:43:34] Fire_Adept@76.212.226.129	3`_`/wall blah`0`0`0
+[19:43:40] Garth@121.209.6.50	3`_`I THINK I BETTER LEAVE`0`0`0
+[19:43:41] Fire_Adept@76.212.226.129	3`_`yeah, didn't think that was a registered command`0`0`0
+[19:43:43] Fire_Adept@76.212.226.129	3`_`....yet :V`0`0`0
+[19:44:22] <no name>@84.194.242.222	1`Glodenox`b`0`0`0
+[19:44:22] Glodenox@84.194.242.222	0`_`_`0`0`0
+[19:44:42] Fire_Adept@76.212.226.129	3`_`hi again, it hasn't crashed on me yet`0`0`0
+[19:48:26] *** Log started on 12/28/09 ***
+[19:48:29] <no name>@76.212.226.129	1`Fire_Adept`password`0`0`0
+[19:48:29] Fire_Adept@76.212.226.129	0`_`_`0`0`0
+[19:48:44] Fire_Adept@76.212.226.129	3`_`asdf`0`0`0
+[19:48:44] Fire_Adept@76.212.226.129	3`_`asdf`0`0`0
+[19:48:47] Fire_Adept@76.212.226.129	3`_`asdf`0`0`0
+[19:48:50] Fire_Adept@76.212.226.129	3`_`asdfasdf`0`0`0
+[19:48:51] Fire_Adept@76.212.226.129	3`_`asd`0`0`0
+[19:48:51] Fire_Adept@76.212.226.129	3`_`fasd`0`0`0
+[19:48:52] Fire_Adept@76.212.226.129	3`_`fads`0`0`0
+[19:48:52] Fire_Adept@76.212.226.129	3`_`f`0`0`0
+[19:48:52] Fire_Adept@76.212.226.129	3`_`asdf`0`0`0
+[19:48:54] Fire_Adept@76.212.226.129	3`_`asdfasdf`0`0`0
+[19:48:54] Fire_Adept@76.212.226.129	3`_`asdf`0`0`0
+[19:48:55] Fire_Adept@76.212.226.129	3`_`asdf`0`0`0
+[19:48:55] Fire_Adept@76.212.226.129	3`_`asdf`0`0`0
+[19:48:56] Fire_Adept@76.212.226.129	3`_`asdf`0`0`0
+[19:48:56] Fire_Adept@76.212.226.129	3`_`as`0`0`0
+[19:48:57] Fire_Adept@76.212.226.129	3`_`dfasdf`0`0`0
+[19:48:57] Fire_Adept@76.212.226.129	3`_`asdf`0`0`0
+[19:48:57] Fire_Adept@76.212.226.129	3`_`asdf`0`0`0
+[19:48:58] Fire_Adept@76.212.226.129	3`_`asdf`0`0`0
+[19:48:58] Fire_Adept@76.212.226.129	3`_`asdf`0`0`0
+[19:48:59] Fire_Adept@76.212.226.129	3`_`asdf`0`0`0
+[19:48:59] Fire_Adept@76.212.226.129	3`_`asdf`0`0`0
+[19:49:00] Fire_Adept@76.212.226.129	3`_`asdf`0`0`0
+[19:49:01] Fire_Adept@76.212.226.129	3`_`asasdfasdf`0`0`0
+[19:49:02] Fire_Adept@76.212.226.129	3`_`asdf`0`0`0
+[19:49:03] Fire_Adept@76.212.226.129	3`_`sdf`0`0`0
+[19:49:04] Fire_Adept@76.212.226.129	3`_`acxvz`0`0`0
+[19:49:16] Fire_Adept@76.212.226.129	600`_`theme|Classic|red|0|green|0|blue|0|freezeChat|false|ignoreColors|false|timeStamp|false|beep|true|bleep|true|audio|true`0`0`0
+[19:49:29] Fire_Adept@76.212.226.129	3`_`(07:12:22 PM) Mark: ah, fun (07:18:40 PM) Mark: what're you doing there, if you don't mind the question?`0`0`0
+[19:49:41] <no name>@76.212.226.129	1`Fire_Adept`password`0`0`0
+[19:49:54] <no name>@76.212.226.129	1`Fire_Adept`password`0`0`0
+[19:50:02] <no name>@76.212.226.129	1`firr`asdf`0`0`0
+[19:50:02] firr@76.212.226.129	0`_`_`0`0`0
+[19:50:12] firr@76.212.226.129	3`_`(07:12:22 PM) Mark: ah, fun (07:18:40 PM) Mark: what're you doing there, if you don't mind the question?`0`0`0
+[19:50:21] firr@76.212.226.129	3`_`(07:12:22 PM) Mark: ah, fun (07:18:40 PM) Mark: what're you doing there, if you don't mind the question?`0`0`0
+[19:57:57] *** Log started on 12/28/09 ***

@@ -1,0 +1,2 @@
+OBJDIR=obj
+SUBDIRS=src
