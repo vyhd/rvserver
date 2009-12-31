@@ -1,4 +1,5 @@
 #include "packet/PacketHandler.h"
+#include "verinfo.h"
 
 namespace Login
 {
@@ -48,6 +49,14 @@ bool Login::HandlePacket( ChatServer *server, User *user, const ChatPacket *pack
 	server->Send( &response, user );
 
 	user->SetLoggedIn( true );
+
+	// send the new guy a nice little message about the server version
+	char buffer[128];
+	sprintf( buffer, "Server build %lu, compiled %s", BUILD_VERSION, BUILD_DATE );
+	std::string sBuffer( buffer );
+
+	ChatPacket debug( WALL_MESSAGE, "_", sBuffer );
+	server->Send( &debug, user );
 
 	// new guy's here! let everyone know!
 	ChatPacket msg( USER_JOIN, user->GetName(), sCode );

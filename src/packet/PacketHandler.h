@@ -48,4 +48,8 @@ struct RegisterHandler
 #define REGISTER_HANDLER( code, namespace ) \
 	static RegisterHandler g_##namespace##Handler##code( code, &namespace::HandlePacket );
 
+/* Use this to define a specific function to handle a code. */
+#define REGISTER_HANDLER_FN( code, fn ) \
+	static RegisterHandler g_Handler##code( code, &fn );
+
 #endif // PACKET_HANDLER_H
