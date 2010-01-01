@@ -16,7 +16,7 @@ bool PrivateMessage::HandlePacket( ChatServer *server, User *user, const ChatPac
 	// find the user whose name is given in the first param
 	User *recipient = server->GetUserByName( packet->sParam1 );
 
-	// user not found. how bizarre, huh?
+	// user not found. bizarre, huh?
 	if( recipient == NULL )
 		return false;
 
@@ -30,4 +30,3 @@ bool PrivateMessage::HandlePacket( ChatServer *server, User *user, const ChatPac
 
 	return true;
 }
-

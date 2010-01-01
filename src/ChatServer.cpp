@@ -1,4 +1,5 @@
 #include <cerrno>
+#include <cstdlib>
 
 #include <unistd.h>
 #include <signal.h>
@@ -16,6 +17,14 @@ using namespace std;
 const unsigned SLEEP_MICROSECONDS = 1000*150;
 
 const int SERVER_PORT = 7005;
+
+/* On caught signal, add a message and flush logs before exiting. */
+void sig_handler( int signum )
+{
+	Logger::SystemLog( "Caught code %d: exiting.", signum );
+	Logger::Flush();
+	exit(signum);
+}
 
 ChatServer::ChatServer()
 {
@@ -141,6 +150,14 @@ void ChatServer::HandleUserPacket( User *user, const std::string &buf )
 		return;
 	}
 
+	// don't log packets that weren't actually handled
+	if( !PacketHandler::Handle(this, user, &packet) )
+		return;
+
+	/* If we have a login packet, wipe the password. */
+	if( packet.iCode == USER_JOIN )
+		packet.sParam2 = "[censored]";
+
 	/* write this packet to the log, including the user prefix, e.g.
 	 * Fire_Adept@192.168.1.1	3`_`hey sup d00dz`3`13`37
 	 */
@@ -148,9 +165,7 @@ void ChatServer::HandleUserPacket( User *user, const std::string &buf )
 	sLogLine.push_back( '\t' );
 	sLogLine.append( packet.ToString() );
 
-	// don't log packets that weren't actually handled
-	if( PacketHandler::Handle(this, user, &packet) )
-		Logger::ChatLog( sLogLine.c_str() );
+	Logger::ChatLog( sLogLine.c_str() );
 }	
 
 User* ChatServer::GetUserByName( const std::string &sName ) const
@@ -220,6 +235,8 @@ void ChatServer::Broadcast( const ChatPacket *packet, const std::string *sRoom )
 	// Write(). we only need ToString (which is expensive) once this way.
 	const std::string sPacketData = packet->ToString();
 
+	Logger::SystemLog( "Broadcasting %s", sPacketData.c_str() );
+
 	// if no room is given, or this user is in the room, send it!
 	for( set<User*>::const_iterator it = m_Users.begin(); it != m_Users.end(); it++ )
 	{
@@ -251,6 +268,12 @@ int main( int argc, char **argv )
 	// ignore SIGPIPE. we don't want the program stopping because
 	// a client disconnected in an unexpected way.
 	sigignore( SIGPIPE );
+
+	// intercept SIGINT, SIGSEGV, and SIGTERM with our own version, 
+	// which will flush all of the server logs before exiting.
+	signal( SIGINT, sig_handler );
+	signal( SIGTERM, sig_handler );
+	signal( SIGSEGV, sig_handler );
 
 	ChatServer server;
 	server.MainLoop();

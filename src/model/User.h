@@ -36,13 +36,13 @@ public:
 
 	/* get name/away/room */
 	const std::string& GetName() const	{ return m_sName; }
-	const std::string& GetAway() const	{ return m_sMessage; }
+	const std::string& GetMessage() const	{ return m_sMessage; }
 	const std::string& GetRoom() const	{ return m_sRoom; }
 	const std::string& GetPrefs() const	{ return m_sPrefs; }
 
 	/* set name/away/room */
 	void SetName( const std::string &str )	{ m_sName.assign( str ); }
-	void SetAway( const std::string &str )	{ m_sMessage.assign( str ); }
+	void SetMessage(const std::string &str)	{ m_sMessage.assign( str ); }
 	void SetRoom( const std::string &str )	{ m_sRoom.assign( str ); }
 	void SetPrefs( const std::string &str )	{ m_sPrefs.assign( str ); }
 

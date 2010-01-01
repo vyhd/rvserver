@@ -30,7 +30,7 @@ static std::string GetCode( User *user )
 	// display away status, appending the message if away
 	ret.push_back( user->IsAway() ? 'a' : '_' );
 	if( user->IsAway() )
-		ret.append( user->GetAway() );
+		ret.append( user->GetMessage() );
 
 	return ret;
 }	

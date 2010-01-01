@@ -26,7 +26,8 @@ Packet = packet/ChatPacket.cpp packet/ChatPacket.h \
 	packet/PacketUtil.cpp packet/PacketUtil.h \
 	packet/MessageCodes.h
 
-Handlers = handlers/Config.cpp \
+Handlers = handlers/AwayMessage.cpp \
+	handlers/Config.cpp \
 	handlers/ListUsers.cpp \
 	handlers/Login.cpp \
 	handlers/Logout.cpp \
@@ -35,8 +36,7 @@ Handlers = handlers/Config.cpp \
 	handlers/RoomList.cpp \
 	handlers/RoomMessage.cpp \
 	handlers/PrivateMessage.cpp \
-	handlers/Typing.cpp \
-	handlers/WallMessage.cpp
+	handlers/Typing.cpp
 
 # Compile handlers last due to deps
 rvserver_SOURCES = $(Network) $(Model) $(Logger) $(Packet) \

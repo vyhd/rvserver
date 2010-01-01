@@ -11,7 +11,7 @@ REGISTER_HANDLER( RESET_TYPING, Typing );
 
 bool Typing::HandlePacket( ChatServer *server, User *user, const ChatPacket *packet )
 {
-	// never send any of these messages if the user shouldn't be
+	// never send any of these messages if the user shouldn't
 	if( user->IsMuted() )
 		return false;
 

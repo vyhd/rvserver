@@ -39,11 +39,18 @@ const char* GetAction( uint16_t iCode )
 inline User* GetTarget( ChatServer *server, User* user, const std::string &sName )
 {
 	if( !user->IsMod() )
+	{
+		Logger::SystemLog( "Not mod: returning NULL" );
 		return NULL;
+	}
 
 	User* target = server->GetUserByName( sName );
-	if( target == NULL || !target->IsLoggedIn() )
+
+	// if not logged in, we don't mess with them
+	if( target && !target->IsLoggedIn() )
 		return NULL;
+
+	return target;
 }
 
 /* a removal action results in the disconnection of the targeted client. */
@@ -63,8 +70,8 @@ bool HandleRemoveAction( ChatServer *server, User *user, const ChatPacket *packe
 
 	// notify the target about the taken action
 	ChatPacket notify( packet->iCode );
-	server->Send( &notify, user );
-	server->Condemn( user );
+	server->Send( &notify, target );
+	server->Condemn( target );
 
 	return true;
 }
@@ -74,6 +81,8 @@ bool HandleRemoveAction( ChatServer *server, User *user, const ChatPacket *packe
 bool HandleMuteAction( ChatServer *server, User *user, const ChatPacket *packet, bool bMute )
 {
 	User* target = GetTarget( server, user, packet->sParam2 );
+
+	Logger::SystemLog( "HandleMuteAction(%p, %p, %p), target %p", server, user, packet, target );
 
 	if( target == NULL )
 		return false;
