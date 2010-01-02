@@ -10,7 +10,7 @@ HandlerMap* PacketHandler::GetMap()
 bool PacketHandler::Handle( ChatServer *server, User *user, const ChatPacket *packet )
 {
 	// unless this user is actually away, this constitutes being around
-	if( packet->iCode != CLIENT_AWAY )
+	if( user->IsAway() && packet->iCode != CLIENT_AWAY )
 	{
 		user->SetAway( false );
 		user->SetIdle( false );

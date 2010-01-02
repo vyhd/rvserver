@@ -235,7 +235,7 @@ void ChatServer::Broadcast( const ChatPacket *packet, const std::string *sRoom )
 	// Write(). we only need ToString (which is expensive) once this way.
 	const std::string sPacketData = packet->ToString();
 
-	Logger::SystemLog( "Broadcasting %s", sPacketData.c_str() );
+	Logger::SystemLog( "Broadcasting: %s", sPacketData.c_str() );
 
 	// if no room is given, or this user is in the room, send it!
 	for( set<User*>::const_iterator it = m_Users.begin(); it != m_Users.end(); it++ )
