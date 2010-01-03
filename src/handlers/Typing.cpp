@@ -1,3 +1,6 @@
+/* Essentially, we just pass these onto the targeted user, so we can just
+ * define one function, get the target, and pass on the packet code. */
+
 #include "packet/PacketHandler.h"
 
 namespace Typing

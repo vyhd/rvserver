@@ -5,7 +5,7 @@
 #define CHAT_SERVER_H
 
 #include <set>
-#include <map>	// XXX
+#include <vector>
 #include <string>
 #include "network/SocketListener.h"
 

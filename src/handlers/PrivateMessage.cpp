@@ -20,6 +20,7 @@ bool PrivateMessage::HandlePacket( ChatServer *server, User *user, const ChatPac
 	if( recipient == NULL )
 		return false;
 
+	// copy the packet code and message
 	ChatPacket msg( *packet );
 
 	// set the first param to this user's name

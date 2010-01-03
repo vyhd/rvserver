@@ -11,6 +11,7 @@ bool HandleUnban( ChatServer *server, User *user, const ChatPacket *packet );
 bool HandleMute( ChatServer *server, User *user, const ChatPacket *packet );
 bool HandleUnmute( ChatServer *server, User *user, const ChatPacket *packet );
 bool HandleQuery( ChatServer *server, User *user, const ChatPacket *packet );
+//bool ForceJoin( ChatServer *server, User *user, const ChatPacket *packet );
 
 REGISTER_HANDLER_FN( USER_KICK, HandleKick );
 REGISTER_HANDLER_FN( USER_DISABLE, HandleDisable );
@@ -19,6 +20,7 @@ REGISTER_HANDLER_FN( USER_UNBAN, HandleUnban );
 REGISTER_HANDLER_FN( USER_MUTE, HandleMute );
 REGISTER_HANDLER_FN( USER_UNMUTE, HandleUnmute );
 REGISTER_HANDLER_FN( IP_QUERY, HandleQuery );
+//REGISTER_HANDLER_FN( FORCE_JOIN, ForceJoin );
 
 const char* GetAction( uint16_t iCode )
 {

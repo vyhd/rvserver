@@ -26,15 +26,16 @@ Packet = packet/ChatPacket.cpp packet/ChatPacket.h \
 	packet/PacketUtil.cpp packet/PacketUtil.h \
 	packet/MessageCodes.h
 
-Handlers = handlers/AwayMessage.cpp \
+Handlers = \
+	handlers/Action.cpp \
+	handlers/AwayMessage.cpp \
 	handlers/Config.cpp \
+	handlers/ListRooms.cpp \
 	handlers/ListUsers.cpp \
 	handlers/Login.cpp \
 	handlers/Logout.cpp \
+	handlers/Message.cpp \
 	handlers/ModActions.cpp \
-	handlers/RoomAction.cpp \
-	handlers/RoomList.cpp \
-	handlers/RoomMessage.cpp \
 	handlers/PrivateMessage.cpp \
 	handlers/Typing.cpp
 

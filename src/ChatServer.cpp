@@ -63,7 +63,6 @@ void ChatServer::RemoveUser( User *user )
 		Broadcast( &msg );
 	}
 
-
 	// take this user out of the update loop
 	m_Users.erase( user );
 
@@ -154,7 +153,17 @@ void ChatServer::HandleUserPacket( User *user, const std::string &buf )
 	if( !PacketHandler::Handle(this, user, &packet) )
 		return;
 
-	/* If we have a login packet, wipe the password. */
+	// broadcast a returned message if the user was away before
+	if( user->IsAway() && packet.iCode != CLIENT_AWAY )
+	{
+		ChatPacket msg( CLIENT_BACK, user->GetName(), "_" );
+		Broadcast( &msg );
+	}
+
+	// update idle/away and last message timestamp
+	user->PacketSent();
+
+	// If we have a login packet, wipe the password from the log.
 	if( packet.iCode == USER_JOIN )
 		packet.sParam2 = "[censored]";
 

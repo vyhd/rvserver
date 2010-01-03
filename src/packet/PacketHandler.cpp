@@ -9,15 +9,6 @@ HandlerMap* PacketHandler::GetMap()
 
 bool PacketHandler::Handle( ChatServer *server, User *user, const ChatPacket *packet )
 {
-	// unless this user is actually away, this constitutes being around
-	if( user->IsAway() && packet->iCode != CLIENT_AWAY )
-	{
-		user->SetAway( false );
-		user->SetIdle( false );
-		ChatPacket msg( CLIENT_BACK, user->GetName(), "vote Saxon" );
-		server->Broadcast( &msg );
-	}
-
 	// try to find a handler for this packet's code
 	HandlerMap::iterator it = GetMap()->find( MessageCode(packet->iCode) );
 
