@@ -12,12 +12,14 @@ class User;
 class Room
 {
 public:
+	Room( const std::string& sName );
+
 	const std::string& GetName()	{ return m_sName; }
 
 	/* sends a message to all users in this room */
 	void 
 private:
-	std::string m_sName;
-	
+	const std::string m_sName;
+}
 
 #endif // ROOM_H

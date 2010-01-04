@@ -1,5 +1,6 @@
 #include <cerrno>
 #include <cstdlib>
+#include <cstring>	// for memset, strcasecmp
 
 #include <unistd.h>
 #include <signal.h>
@@ -181,7 +182,7 @@ User* ChatServer::GetUserByName( const std::string &sName ) const
 {
 	/* XXX: can we do better than a linear search? */
 	for( set<User*>::iterator it = m_Users.begin(); it != m_Users.end(); it++ )
-		if( (*it)->GetName().compare(sName) == 0 )
+		if( strcasecmp((*it)->GetName().c_str(), sName.c_str()) == 0 )
 			return (*it);
 
 	// no match found
