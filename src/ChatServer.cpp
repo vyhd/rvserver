@@ -21,7 +21,7 @@ const int SERVER_PORT = 7005;
 /* On caught signal, add a message and flush logs before exiting. */
 void sig_handler( int signum )
 {
-	Logger::SystemLog( "Caught code %d: exiting.", signum );
+	Logger::SystemLog( "Caught code %d (%s): exiting.", signum, strsignal(signum) );
 	Logger::Flush();
 	exit(signum);
 }
@@ -134,7 +134,7 @@ void ChatServer::UpdateUser( User *user )
 void ChatServer::HandleUserPacket( User *user, const std::string &buf )
 {
 	// create user-specific log prefix, e.g. "Fire_Adept@127.0.0.1"
-	string sUserPrefix = user->GetName();
+	string sUserPrefix( user->GetName() );
 	sUserPrefix.push_back( '@' );
 	sUserPrefix.append( GetUserIP(user) );
 
@@ -149,10 +149,6 @@ void ChatServer::HandleUserPacket( User *user, const std::string &buf )
 		return;
 	}
 
-	// don't log packets that weren't actually handled
-	if( !PacketHandler::Handle(this, user, &packet) )
-		return;
-
 	// broadcast a returned message if the user was away before
 	if( user->IsAway() && packet.iCode != CLIENT_AWAY )
 	{
@@ -162,6 +158,10 @@ void ChatServer::HandleUserPacket( User *user, const std::string &buf )
 
 	// update idle/away and last message timestamp
 	user->PacketSent();
+
+	// don't log packets that weren't actually handled
+	if( !PacketHandler::Handle(this, user, &packet) )
+		return;
 
 	// If we have a login packet, wipe the password from the log.
 	if( packet.iCode == USER_JOIN )
@@ -194,8 +194,10 @@ const char* ChatServer::GetUserIP( const User *user ) const
 	struct sockaddr_in ClientData;
 	socklen_t ClientLength = sizeof( ClientData );
 
+	// if the socket has been disconnected already by the OS, we
+	// aren't gonna get the IP (which sucks a bit).
 	if( getpeername(user->GetSocket(), (sockaddr *)&ClientData, &ClientLength) < 0 )
-		return NULL;
+		return "<nil>";
 
 	return inet_ntoa(ClientData.sin_addr);
 }
@@ -244,8 +246,6 @@ void ChatServer::Broadcast( const ChatPacket *packet, const std::string *sRoom )
 	// Write(). we only need ToString (which is expensive) once this way.
 	const std::string sPacketData = packet->ToString();
 
-	Logger::SystemLog( "Broadcasting: %s", sPacketData.c_str() );
-
 	// if no room is given, or this user is in the room, send it!
 	for( set<User*>::const_iterator it = m_Users.begin(); it != m_Users.end(); it++ )
 	{
@@ -262,6 +262,12 @@ void ChatServer::Broadcast( const ChatPacket *packet, const std::string *sRoom )
 void ChatServer::Send( const ChatPacket *packet, User *user )
 {
 	Write( packet->ToString(), user );
+}
+
+void ChatServer::WallMessage( const std::string &sMessage )
+{
+	const ChatPacket packet( WALL_MESSAGE, "_", sMessage );
+	Broadcast( &packet );
 }
 
 void ChatServer::Condemn( User *user )

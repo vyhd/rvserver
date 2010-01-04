@@ -9,6 +9,17 @@ HandlerMap* PacketHandler::GetMap()
 
 bool PacketHandler::Handle( ChatServer *server, User *user, const ChatPacket *packet )
 {
+	// if the user who sent this was away, send a notification
+	if( user->IsAway() )
+	{
+		ChatPacket notification( CLIENT_BACK, user->GetName(), "_" );
+		server->Broadcast( &notification );
+	}
+
+	// remove away status and reset the idle timer.
+	// even if the packet isn't handled, it's still activity.
+	user->PacketSent();
+
 	// try to find a handler for this packet's code
 	HandlerMap::iterator it = GetMap()->find( MessageCode(packet->iCode) );
 

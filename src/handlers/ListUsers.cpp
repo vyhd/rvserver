@@ -8,40 +8,46 @@ namespace ListUsers
 
 REGISTER_HANDLER( USER_LIST, ListUsers );
 
-static std::string GetCode( User *user )
+void GetCode( User *user, std::string& sCode )
 {
-	std::string ret( user->GetRoom() );
-
-	ret.push_back( '|' );
+	sCode.assign( user->GetRoom() );
+	sCode.push_back( '|' );
 
 	// display user level. TODO: user level.
+
 	if( user->IsMod() )
-		ret.push_back( 'c' );
+		sCode.push_back( 'c' );
 	else
-		ret.push_back( '_' );
+		sCode.push_back( '_' );
 
 	// display muted status (M for muted, _ for not)
-	ret.push_back( user->IsMuted() ? 'M' : '_' );
+	sCode.push_back( user->IsMuted() ? 'M' : '_' );
 
 	// display idle status, including time if needed
-	// TODO: add time
-	ret.push_back( user->IsIdle() ? 'i' : '_' );
+	sCode.push_back( user->IsIdle() ? 'i' : '_' );
+
+	if( user->IsIdle() )
+	{
+		char sIdleTime[4];
+		sprintf( sIdleTime, "%04u", user->GetIdleTime() );
+		sCode.append( sIdleTime );
+	}
 
 	// display away status, appending the message if away
-	ret.push_back( user->IsAway() ? 'a' : '_' );
+	sCode.push_back( user->IsAway() ? 'a' : '_' );
 	if( user->IsAway() )
-		ret.append( user->GetMessage() );
-
-	return ret;
+		sCode.append( user->GetMessage() );
 }	
 
 bool ListUsers::HandlePacket( ChatServer *server, User *user, const ChatPacket *packet )
 {
-	const std::set<User*> *users = server->GetUserSet();
+	const std::set<User*>* users = server->GetUserSet();
 
 	for( std::set<User*>::const_iterator it = users->begin(); it != users->end(); it++ )
 	{
-		ChatPacket packet( USER_LIST, (*it)->GetName(), GetCode(*it) );
+		std::string sCode;
+		GetCode( (*it), sCode );
+		ChatPacket packet( USER_LIST, (*it)->GetName(), sCode );
 		Logger::SystemLog( "ListUsers: %s", packet.ToString().c_str() );
 		server->Send( &packet, user );
 	}

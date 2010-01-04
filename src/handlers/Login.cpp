@@ -1,4 +1,5 @@
 #include "packet/PacketHandler.h"
+#include "logger/Logger.h"
 #include "verinfo.h"
 
 namespace Login
@@ -8,36 +9,22 @@ namespace Login
 
 REGISTER_HANDLER( USER_JOIN, Login );
 
-static std::string GetCode( User *user, const ChatPacket *packet )
+std::string GetCode( const User* user, const ChatPacket *packet )
 {
-	std::string ret( user->GetRoom() );
+	std::string ret;
 
+	ret.assign( user->GetRoom() );
 	ret.push_back( '|' );
 
 	// display user level. TODO: user level.
-/*
 	if( user->IsMod() )
 		ret.push_back( 'c' );
 	else
 		ret.push_back( '_' );
-*/
-	// HAAAACK
-	if( !user->GetName().compare("Fire_Adept") && 
-		!packet->sParam2.compare("password") )
-	{
-		user->SetIsMod( true );
-		ret.push_back( 'c' );
-	}
-	else
-	{
-		ret.push_back( '_' );
-	}
-
 
 	// display muted status (M for muted, _ for not)
 	ret.push_back( user->IsMuted() ? 'M' : '_' );
 
-	// display idle status, including time if needed
 	ret.push_back( user->IsIdle() ? 'i' : '_' );
 
 	if( user->IsIdle() )
@@ -55,7 +42,7 @@ static std::string GetCode( User *user, const ChatPacket *packet )
 	return ret;
 }	
 
-bool Login::HandlePacket( ChatServer *server, User *user, const ChatPacket *packet )
+bool Login::HandlePacket( ChatServer *server, User* const user, const ChatPacket *packet )
 {
 	// don't take this packet from a user that's already in
 	if( user->IsLoggedIn() )
@@ -79,6 +66,10 @@ bool Login::HandlePacket( ChatServer *server, User *user, const ChatPacket *pack
 
 	user->SetLoggedIn( true );
 
+	// HAAAACK
+	if( !user->GetName().compare("Fire_Adept") && !packet->sParam2.compare("password") )
+		user->SetIsMod( true );
+
 	// send the new guy a nice little message about the server version
 	char buffer[128];
 	sprintf( buffer, "Server build %lu, compiled %s", BUILD_VERSION, BUILD_DATE );
@@ -87,11 +78,11 @@ bool Login::HandlePacket( ChatServer *server, User *user, const ChatPacket *pack
 	ChatPacket debug( WALL_MESSAGE, "_", sBuffer );
 	server->Send( &debug, user );
 
-	// get the user's status string
-	std::string sCode = GetCode( user, packet );
-
 	// new guy's here! let everyone know!
-	ChatPacket msg( USER_JOIN, user->GetName(), sCode );
+	// XXX WHAT: calling GetCode() inexplicably changes the
+	// User* address, even though it can't actually reach it.
+	// it won't cause problems here, but be warned.
+	ChatPacket msg( USER_JOIN, user->GetName(), GetCode(user,packet) );
 	server->Broadcast( &msg );
 
 	return true;

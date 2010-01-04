@@ -67,8 +67,7 @@ bool HandleRemoveAction( ChatServer *server, User *user, const ChatPacket *packe
 	std::string sMessage = target->GetName() + " was " +
 		GetAction(packet->iCode) + " by " + user->GetName();
 
-	ChatPacket msg( WALL_MESSAGE, "_", sMessage );
-	server->Broadcast( &msg );
+	server->WallMessage( sMessage );
 
 	// notify the target about the taken action
 	ChatPacket notify( packet->iCode );
@@ -144,8 +143,7 @@ bool HandleQuery( ChatServer *server, User *user, const ChatPacket *packet )
 	std::string sMessage = target->GetName() + " was " +
 		GetAction(packet->iCode) + " by " + user->GetName();
 
-	ChatPacket msg( WALL_MESSAGE, "_", sMessage );
-	server->Broadcast( &msg );
+	server->WallMessage( sMessage );
 
 	return true;
 }

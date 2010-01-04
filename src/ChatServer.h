@@ -37,6 +37,9 @@ public:
 	/* returns a const reference to the Users set */
 	const std::set<User*> *GetUserSet() const	{ return &m_Users; }
 
+	/* sends a system message to all users on the server */
+	void WallMessage( const std::string &sMessage );
+
 	/* sends a packet to all users (in a specific room, if given) */
 	void Broadcast( const ChatPacket *packet, const std::string *sRoom = NULL );
 

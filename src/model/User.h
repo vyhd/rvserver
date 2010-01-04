@@ -58,8 +58,8 @@ private:
 	/* Socket descriptor for this user's connection */
 	unsigned m_iSocket;
 
-	/* Idle/away status and message, if applicable */
-	bool m_bAway, m_bIdle;
+	/* away status and message, if applicable */
+	bool m_bAway;
 	std::string m_sMessage;
 
 	/* basic user details */

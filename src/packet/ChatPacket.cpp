@@ -23,6 +23,7 @@ ChatPacket::ChatPacket( const ChatPacket &other )
 ChatPacket::ChatPacket( uint16_t iCode ) : sParam1("_"), sParam2("_")
 {
 	this->iCode = iCode;
+	r = g = b = 0;
 }
 
 ChatPacket::ChatPacket( uint16_t iCode, const std::string &sParam1_,
