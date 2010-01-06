@@ -48,11 +48,13 @@ public:
 	void SetPrefs( const std::string &str )	{ m_sPrefs.assign( str ); }
 
 	/* get idle status and time from last message */
-	unsigned GetIdleTime() const;
+	unsigned GetIdleSeconds() const;
+	unsigned GetIdleMinutes() const	{ return GetIdleSeconds() / 60; }
 
-	/* keep the time of the last IDLE broadcast and let the server
+	/* keep the time of the last idle broadcast and let the server
 	 * figure out exactly how it wants to handle idle users. */
-	unsigned GetLastIdleBroadcast() const;
+	/* XXX: this is kind of ugly. can we do better than this somehow? */
+	unsigned GetIdleBroadcastSeconds() const;
 	void UpdateIdleBroadcast()	{ m_LastIdleBroadcast = time(NULL); }
 
 	/* convenience function */

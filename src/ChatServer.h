@@ -27,6 +27,9 @@ public:
 	/* returns a char* to a static buffer containing the client's IP */
 	const char* GetUserIP( const User *user ) const;
 
+	/* returns true if this user meets the server criteria for idle */
+	bool IsIdle( User *user ) const;
+
 	/* returns a const reference to the Users set */
 	const std::set<User*>* GetUserList() const	{ return &m_Users; }
 

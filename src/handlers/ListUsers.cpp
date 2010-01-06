@@ -1,5 +1,4 @@
 #include "packet/PacketHandler.h"
-#include "logger/Logger.h"
 
 namespace ListUsers
 {
@@ -8,7 +7,7 @@ namespace ListUsers
 
 REGISTER_HANDLER( USER_LIST, ListUsers );
 
-void GetCode( User *user, std::string& sCode )
+void GetCode( ChatServer *server, User *user, std::string& sCode )
 {
 	sCode.assign( user->GetRoom() );
 	sCode.push_back( '|' );
@@ -24,17 +23,18 @@ void GetCode( User *user, std::string& sCode )
 	sCode.push_back( user->IsMuted() ? 'M' : '_' );
 
 	// display idle status, including time if needed
-//	sCode.push_back( user->IsIdle() ? 'i' : '_' );
-	sCode.push_back( '_' );
-
-/*
-	if( user->IsIdle() )
+	if( server->IsIdle(user) )
 	{
+		sCode.push_back( 'i' );
 		char sIdleTime[4];
-		sprintf( sIdleTime, "%04u", user->GetIdleTime() );
+		sprintf( sIdleTime, "%04u", user->GetIdleMinutes() );
 		sCode.append( sIdleTime );
 	}
-*/
+	else
+	{
+		sCode.push_back( '_' );
+	}
+
 	// display away status, appending the message if away
 	sCode.push_back( user->IsAway() ? 'a' : '_' );
 	if( user->IsAway() )
@@ -48,9 +48,8 @@ bool ListUsers::HandlePacket( ChatServer *server, User *user, const ChatPacket *
 	for( std::set<User*>::const_iterator it = users->begin(); it != users->end(); it++ )
 	{
 		std::string sCode;
-		GetCode( (*it), sCode );
+		GetCode( server, (*it), sCode );
 		ChatPacket packet( USER_LIST, (*it)->GetName(), sCode );
-		Logger::SystemLog( "ListUsers: %s", packet.ToString().c_str() );
 		server->Send( &packet, user );
 	}
 

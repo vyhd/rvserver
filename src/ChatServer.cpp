@@ -177,7 +177,7 @@ void ChatServer::HandleUserPacket( User *user, const std::string &buf )
 
 	// broadcast a returned message if the user was idle or away before.
 	// don't broadcast if the user just changed their away message, though.
-	if( user->GetIdleTime() > SECONDS_TO_IDLE || (user->IsAway() && packet.iCode != CLIENT_AWAY) )
+	if( user->GetIdleMinutes() > MINUTES_TO_IDLE || (user->IsAway() && packet.iCode != CLIENT_AWAY) )
 	{
 		ChatPacket msg( CLIENT_BACK, user->GetName(), "_" );
 		Broadcast( &msg );
@@ -211,8 +211,7 @@ void ChatServer::CheckIdleStatus( User *user )
 		return;
 
 	// no sense forcing a recalculation for every branch
-	unsigned iIdleMinutes = (user->GetIdleTime() / 60);
-	unsigned iLastBroadcast = (user->GetLastIdleBroadcast() / 60);
+	unsigned iIdleMinutes = user->GetIdleMinutes();
 
 	// nothing to do if the idle time is below the threshold
 	if( iIdleMinutes < MINUTES_TO_IDLE )
@@ -227,15 +226,23 @@ void ChatServer::CheckIdleStatus( User *user )
 		return;
 	}
 
-	// otherwise, just update their idle status if needed
-	if( iLastBroadcast < MINUTES_TO_IDLE )
+	// do we need to broadcast an update message? (every minute)
+	if( user->GetIdleBroadcastSeconds() < 60 )
 		return;
 
+	// print the idle time into a string, broadcast it
 	char sIdleTime[5];
 	sprintf( sIdleTime, "%04u", iIdleMinutes );
 	ChatPacket idle( CLIENT_IDLE, user->GetName(), sIdleTime );
 	Broadcast( &idle );
+
+	// update the user's last idle broadcast timestamp
 	user->UpdateIdleBroadcast();
+}
+
+bool ChatServer::IsIdle( User *user ) const
+{
+	return user->GetIdleMinutes() >= MINUTES_TO_IDLE;
 }
 
 User* ChatServer::GetUserByName( const std::string &sName ) const
@@ -290,7 +297,6 @@ int ChatServer::Write( const std::string &str, User *user )
 
 	int iSent = send( user->GetSocket(), sMessage.c_str(), sMessage.size(), MSG_DONTWAIT );
 
-	Logger::SystemLog( "Wrote %d bytes to %s (%s).", iSent, user->GetName().c_str(), strerror(errno) );
 	if( iSent <= 0 )
 	{
 		Logger::SystemLog( "Error sending line to IP %s: %s", GetUserIP(user), strerror(errno) );

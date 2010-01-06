@@ -15,22 +15,22 @@ User::~User()
 
 }
 
-/* returns idle time, in seconds */
-static unsigned GetElapsed( time_t then )
+/* returns time from then to now, in seconds */
+static unsigned GetElapsedSeconds( time_t then )
 {
 	time_t now = time(NULL);
 	double diff = difftime( now, then );
 	return unsigned(diff);
 }
 
-unsigned User::GetIdleTime() const
+unsigned User::GetIdleSeconds() const
 {
-	return GetElapsed( m_LastMessage );
+	return GetElapsedSeconds( m_LastMessage );
 }
 
-unsigned User::GetLastIdleBroadcast() const
+unsigned User::GetIdleBroadcastSeconds() const
 {
-	return GetElapsed( m_LastIdleBroadcast );
+	return GetElapsedSeconds( m_LastIdleBroadcast );
 }
 
 void User::PacketSent()
