@@ -24,15 +24,17 @@ void GetCode( User *user, std::string& sCode )
 	sCode.push_back( user->IsMuted() ? 'M' : '_' );
 
 	// display idle status, including time if needed
-	sCode.push_back( user->IsIdle() ? 'i' : '_' );
+//	sCode.push_back( user->IsIdle() ? 'i' : '_' );
+	sCode.push_back( '_' );
 
+/*
 	if( user->IsIdle() )
 	{
 		char sIdleTime[4];
 		sprintf( sIdleTime, "%04u", user->GetIdleTime() );
 		sCode.append( sIdleTime );
 	}
-
+*/
 	// display away status, appending the message if away
 	sCode.push_back( user->IsAway() ? 'a' : '_' );
 	if( user->IsAway() )
@@ -41,7 +43,7 @@ void GetCode( User *user, std::string& sCode )
 
 bool ListUsers::HandlePacket( ChatServer *server, User *user, const ChatPacket *packet )
 {
-	const std::set<User*>* users = server->GetUserSet();
+	const std::set<User*>* users = server->GetUserList();
 
 	for( std::set<User*>::const_iterator it = users->begin(); it != users->end(); it++ )
 	{

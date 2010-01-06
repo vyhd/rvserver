@@ -3,11 +3,6 @@
 #include "packet/ChatPacket.h"	// XXX
 #include <cerrno>
 
-/* 20 seconds to idle status, for testing */
-const unsigned SECONDS_TO_IDLE = (60 / 3);
-
-const std::string DEFAULT_ROOM = "Main";
-
 User::User( unsigned iSocket ) : m_iSocket(iSocket), m_sName("<no name>"),
 	m_sRoom(DEFAULT_ROOM)
 {
@@ -20,17 +15,22 @@ User::~User()
 
 }
 
-unsigned User::GetIdleTime() const
+/* returns idle time, in seconds */
+static unsigned GetElapsed( time_t then )
 {
-	time_t now = time_t(NULL);
-	double diff = difftime( now, m_LastMessage );
-
+	time_t now = time(NULL);
+	double diff = difftime( now, then );
 	return unsigned(diff);
 }
 
-bool User::IsIdle() const
+unsigned User::GetIdleTime() const
 {
-	return GetIdleTime() >= SECONDS_TO_IDLE;
+	return GetElapsed( m_LastMessage );
+}
+
+unsigned User::GetLastIdleBroadcast() const
+{
+	return GetElapsed( m_LastIdleBroadcast );
 }
 
 void User::PacketSent()
@@ -42,5 +42,5 @@ void User::PacketSent()
 	}
 
 	// update last packet time
-	m_LastMessage = time_t(NULL);
+	m_LastMessage = time(NULL);
 }

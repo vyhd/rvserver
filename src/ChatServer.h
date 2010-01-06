@@ -21,13 +21,6 @@ public:
 	ChatServer();
 	~ChatServer();
 
-	bool Start();
-	void Stop();
-	bool Reload();
-
-	/* given iSocket, creates a user with that socket */
-	void AddUser( unsigned iSocket );
-
 	/* returns a reference to the user with the given name */
 	User* GetUserByName( const std::string &sName ) const;
 
@@ -35,7 +28,10 @@ public:
 	const char* GetUserIP( const User *user ) const;
 
 	/* returns a const reference to the Users set */
-	const std::set<User*> *GetUserSet() const	{ return &m_Users; }
+	const std::set<User*>* GetUserList() const	{ return &m_Users; }
+
+	/* returns a const reference to the Rooms vector */
+	const std::vector<std::string>* GetRoomList() const	{ return &m_Rooms; }
 
 	/* sends a system message to all users on the server */
 	void WallMessage( const std::string &sMessage );
@@ -54,14 +50,20 @@ public:
 	void Condemn( User *user );
 
 private:
-	/* disconnects the given use from the server */
+	/* given iSocket, creates a user with that socket */
+	void AddUser( unsigned iSocket );
+
+	/* disconnects the given user from the server */
 	void RemoveUser( User *user );
 
 	/* performs an update cycle on the given user */
 	void UpdateUser( User *user );
 
-	/* handles a packet received from user. */
+	/* handles a packet received from user */
 	void HandleUserPacket( User *user, const std::string &in );
+
+	/* checks the idle statistics of a user, broadcasts if needed */
+	void CheckIdleStatus( User *user );
 
 	/* reads from this user into the given bufer, up to len bytes */
 	int Read( char *buffer, unsigned len, User *user );
@@ -80,8 +82,9 @@ private:
 
 	/* set of all users to delete after this update */
 	std::set<User*> m_UsersToDelete;
-};
-	
 
+	/* list of all rooms on the server */
+	std::vector<std::string> m_Rooms;
+};
 
 #endif // CHAT_SERVER_H

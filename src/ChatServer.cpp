@@ -4,6 +4,7 @@
 
 #include <unistd.h>
 #include <signal.h>
+#include <sys/time.h>	// for timestamping
 
 #include "ChatServer.h"
 #include "logger/Logger.h"
@@ -17,7 +18,14 @@ using namespace std;
 /* wait 0.15 seconds between update cycles */
 const unsigned SLEEP_MICROSECONDS = 1000*150;
 
+/* this is the server port unless otherwise set */
 const int SERVER_PORT = 7005;
+
+/* number of seconds to full user idle status */
+const unsigned MINUTES_TO_IDLE = 3;
+
+/* number of seconds to idle kick */
+const unsigned MINUTES_TO_IDLE_KICK = 30;
 
 /* On caught signal, add a message and flush logs before exiting. */
 void sig_handler( int signum )
@@ -31,6 +39,9 @@ ChatServer::ChatServer()
 {
 	m_pListener = new SocketListener;
 	m_pListener->Connect( SERVER_PORT );
+
+	m_Rooms.push_back( DEFAULT_ROOM );
+	m_Rooms.push_back( "Spam Room" );
 }
 
 ChatServer::~ChatServer()
@@ -72,9 +83,12 @@ void ChatServer::RemoveUser( User *user )
 
 void ChatServer::MainLoop()
 {
+	struct timeval tv_start, tv_end;
 	while( 1 )
 	{
-		// see if the SocketListener has any new connections.
+		gettimeofday( &tv_start, NULL );
+
+		// see if the SocketListener has any new connections and add them.
 		{
 			int iSocket = m_pListener->GetConnection();
 
@@ -96,8 +110,19 @@ void ChatServer::MainLoop()
 			m_UsersToDelete.clear();
 		}
 
+		// send off any messages for users who are idle
+		for( set<User*>::iterator it = m_Users.begin(); it != m_Users.end(); it++ )
+			CheckIdleStatus( *it );
+
 		// flush all the logs to disk on update
 		Logger::Flush();
+
+		gettimeofday( &tv_end, NULL );
+
+		unsigned iDiff = 1000000 * (tv_end.tv_sec-tv_start.tv_sec) + (tv_end.tv_usec-tv_start.tv_usec);
+
+		if( iDiff >= 150 )
+			printf( "MainLoop took %u usecs to execute.", iDiff );
 
 		// give a bunch of time to other processes
 		usleep( SLEEP_MICROSECONDS );
@@ -150,8 +175,9 @@ void ChatServer::HandleUserPacket( User *user, const std::string &buf )
 		return;
 	}
 
-	// broadcast a returned message if the user was away before
-	if( user->IsAway() && packet.iCode != CLIENT_AWAY )
+	// broadcast a returned message if the user was idle or away before.
+	// don't broadcast if the user just changed their away message, though.
+	if( user->GetIdleTime() > SECONDS_TO_IDLE || (user->IsAway() && packet.iCode != CLIENT_AWAY) )
 	{
 		ChatPacket msg( CLIENT_BACK, user->GetName(), "_" );
 		Broadcast( &msg );
@@ -177,6 +203,40 @@ void ChatServer::HandleUserPacket( User *user, const std::string &buf )
 
 	Logger::ChatLog( sLogLine.c_str() );
 }	
+
+void ChatServer::CheckIdleStatus( User *user )
+{
+	// never bother with users who aren't logged in
+	if( !user->IsLoggedIn() )
+		return;
+
+	// no sense forcing a recalculation for every branch
+	unsigned iIdleMinutes = (user->GetIdleTime() / 60);
+	unsigned iLastBroadcast = (user->GetLastIdleBroadcast() / 60);
+
+	// nothing to do if the idle time is below the threshold
+	if( iIdleMinutes < MINUTES_TO_IDLE )
+		return;
+
+	// if the user is above our kick threshold, give 'em the boot
+	if( iIdleMinutes >= MINUTES_TO_IDLE_KICK )
+	{
+		ChatPacket kick( IDLE_KICK );
+		Send( &kick, user );
+		Condemn( user );
+		return;
+	}
+
+	// otherwise, just update their idle status if needed
+	if( iLastBroadcast < MINUTES_TO_IDLE )
+		return;
+
+	char sIdleTime[5];
+	sprintf( sIdleTime, "%04u", iIdleMinutes );
+	ChatPacket idle( CLIENT_IDLE, user->GetName(), sIdleTime );
+	Broadcast( &idle );
+	user->UpdateIdleBroadcast();
+}
 
 User* ChatServer::GetUserByName( const std::string &sName ) const
 {
@@ -230,6 +290,7 @@ int ChatServer::Write( const std::string &str, User *user )
 
 	int iSent = send( user->GetSocket(), sMessage.c_str(), sMessage.size(), MSG_DONTWAIT );
 
+	Logger::SystemLog( "Wrote %d bytes to %s (%s).", iSent, user->GetName().c_str(), strerror(errno) );
 	if( iSent <= 0 )
 	{
 		Logger::SystemLog( "Error sending line to IP %s: %s", GetUserIP(user), strerror(errno) );

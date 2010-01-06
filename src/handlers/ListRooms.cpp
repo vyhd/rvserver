@@ -9,6 +9,7 @@ REGISTER_HANDLER( ROOM_LIST, RoomList );
 
 bool RoomList::HandlePacket( ChatServer *server, User *user, const ChatPacket *packet )
 {
+//	const std::vector<std::string>
 	ChatPacket main( ROOM_LIST, "_", "Main" );
 	ChatPacket spam( ROOM_LIST, "_", "Spam Room" );
 

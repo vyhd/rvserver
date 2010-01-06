@@ -1,5 +1,4 @@
 #include "packet/PacketHandler.h"
-#include "logger/Logger.h"
 #include "verinfo.h"
 
 namespace Login
@@ -25,19 +24,8 @@ std::string GetCode( const User* user, const ChatPacket *packet )
 	// display muted status (M for muted, _ for not)
 	ret.push_back( user->IsMuted() ? 'M' : '_' );
 
-	ret.push_back( user->IsIdle() ? 'i' : '_' );
-
-	if( user->IsIdle() )
-	{
-		char sIdleTime[4];
-		sprintf( sIdleTime, "%04u", user->GetIdleTime() );
-		ret.append( sIdleTime );
-	}
-
-	// display away status, appending the message if away
-	ret.push_back( user->IsAway() ? 'a' : '_' );
-	if( user->IsAway() )
-		ret.append( user->GetMessage() );
+	// user can't be away or idle at this time. blank 'em.
+	ret.append( "__" );
 
 	return ret;
 }	
@@ -79,9 +67,9 @@ bool Login::HandlePacket( ChatServer *server, User* const user, const ChatPacket
 	server->Send( &debug, user );
 
 	// new guy's here! let everyone know!
-	// XXX WHAT: calling GetCode() inexplicably changes the
-	// User* address, even though it can't actually reach it.
-	// it won't cause problems here, but be warned.
+	// BEWARE: with g++ 4.0.3 and -g -ggdb -O2, calling GetCode mysteriously
+	// changes the pointer address of "user". We put it here, so it won't
+	// cause problems, but now you know if something like it happens again.
 	ChatPacket msg( USER_JOIN, user->GetName(), GetCode(user,packet) );
 	server->Broadcast( &msg );
 

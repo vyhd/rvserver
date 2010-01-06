@@ -12,6 +12,9 @@
 
 class ChatServer;
 
+/* room to which all users are automatically joined */
+const std::string DEFAULT_ROOM = "Main";
+
 class User
 {
 public:
@@ -45,8 +48,12 @@ public:
 	void SetPrefs( const std::string &str )	{ m_sPrefs.assign( str ); }
 
 	/* get idle status and time from last message */
-	bool IsIdle() const;
 	unsigned GetIdleTime() const;
+
+	/* keep the time of the last IDLE broadcast and let the server
+	 * figure out exactly how it wants to handle idle users. */
+	unsigned GetLastIdleBroadcast() const;
+	void UpdateIdleBroadcast()	{ m_LastIdleBroadcast = time(NULL); }
 
 	/* convenience function */
 	bool IsInRoom( const std::string &str ) const	{ return m_sRoom.compare(str) == 0; }
@@ -71,7 +78,8 @@ private:
 	bool m_bIsMod;
 	bool m_bMuted;
 
-	time_t m_LastMessage;
+	// m_LastIdleBroadcast = time that idle status was last broadcast
+	time_t m_LastMessage, m_LastIdleBroadcast;
 };
 
 #endif // USER_H
