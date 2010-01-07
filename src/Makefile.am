@@ -2,7 +2,7 @@ bin_PROGRAMS = rvserver
 
 noinst_PROGRAMS = rvserver
 
-AM_CXXFLAGS = -ggdb
+AM_CXXFLAGS = -ggdb -Wall -pedantic
 
 # some hacky stuff to get a build version auto-updating
 .PHONY: build_ver

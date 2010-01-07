@@ -36,6 +36,11 @@ public:
 	/* returns a const reference to the Rooms vector */
 	const std::vector<std::string>* GetRoomList() const	{ return &m_Rooms; }
 
+	/* a few self-explanatory room functions */
+	bool RoomExists( const std::string &str ) const;
+	void AddRoom( const std::string &str );
+	void RemoveRoom( const std::string &str );
+
 	/* sends a system message to all users on the server */
 	void WallMessage( const std::string &sMessage );
 

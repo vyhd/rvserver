@@ -60,8 +60,19 @@ Logger::Logger( const char *szLogPath, const char *szSystemPath )
 
 Logger::~Logger()
 {
-	Flush();
+	/* write the ending date/time header */
+	char time_header[36];
 
+	time_t now = time(NULL);
+	struct tm *timeval = localtime( &now );
+
+	strftime( time_header, 36, "*** Log ended on %x ***\n\n", timeval );
+
+	ChatLog( time_header );
+	SystemLog( time_header );
+
+	/* flush the file buffers and close the handles */
+	Flush();
 	fclose( m_pLogFile );
 	fclose( m_pSystemFile );
 }

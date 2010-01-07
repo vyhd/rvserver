@@ -1,4 +1,5 @@
 #include "packet/PacketHandler.h"
+#include "logger/Logger.h"
 
 namespace ListUsers
 {
@@ -25,6 +26,7 @@ void GetCode( ChatServer *server, User *user, std::string& sCode )
 	// display idle status, including time if needed
 	if( server->IsIdle(user) )
 	{
+		Logger::SystemLog( "Server says %s is idle for %u minutes", user->GetName().c_str(), user->GetIdleMinutes() );
 		sCode.push_back( 'i' );
 		char sIdleTime[4];
 		sprintf( sIdleTime, "%04u", user->GetIdleMinutes() );
@@ -56,4 +58,5 @@ bool ListUsers::HandlePacket( ChatServer *server, User *user, const ChatPacket *
 	// signify that the user update is done
 	ChatPacket finish( USER_LIST, "_", "done" );
 	server->Send( &finish, user );
+	return true;
 }

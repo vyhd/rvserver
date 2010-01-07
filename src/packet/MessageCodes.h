@@ -29,6 +29,9 @@ enum MessageCode
 	// timedban command
 	USER_TIMEDBAN	= 16,
 
+	// mod chat
+	MOD_CHAT	= 20,
+
 	// login responses
 	ACCESS_GRANTED	= 100,
 	ACCESS_DENIED	= 101,
@@ -59,7 +62,7 @@ enum MessageCode
 	// more client messages
 	START_TYPING	= 602,
 	STOP_TYPING	= 603,
-	RESET_TYPING	= 604,
+	RESET_TYPING	= 604
 };
 
 #endif // MESSAGE_CODES_H

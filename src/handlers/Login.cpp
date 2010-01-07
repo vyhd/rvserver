@@ -1,4 +1,5 @@
 #include "packet/PacketHandler.h"
+#include "logger/Logger.h"
 #include "verinfo.h"
 
 namespace Login
@@ -39,10 +40,26 @@ bool Login::HandlePacket( ChatServer *server, User* const user, const ChatPacket
 	// if this name is already logged in, don't let it log in again.
 	if( server->GetUserByName(packet->sParam1) != NULL )
 	{
-		ChatPacket response( ACCESS_DENIED );
-		server->Send( &response, user );
-		server->Condemn( user );
-		return true;
+		// HACK: sometimes, it doesn't get killed users fast enough.
+		// if this user has the same IP, boot the original.
+		User *other = server->GetUserByName(packet->sParam1);
+
+		std::string sTheirIP( server->GetUserIP(other) );
+
+		if( sTheirIP.compare(server->GetUserIP(user)) != 0 )
+		{
+			ChatPacket response( ACCESS_DENIED );
+			server->Send( &response, user );
+			server->Condemn( user );
+			return true;
+		}
+		else
+		{
+			// you...you DOUBLE HACK: change the other user
+			// name so it won't kill us when we log in.
+			other->SetName( other->GetName() + " (dead)" );
+			server->Condemn( other );
+		}
 	}
 
 	// set the user's name from the login packet
@@ -60,7 +77,7 @@ bool Login::HandlePacket( ChatServer *server, User* const user, const ChatPacket
 
 	// send the new guy a nice little message about the server version
 	char buffer[128];
-	sprintf( buffer, "Server build %lu, compiled %s", BUILD_VERSION, BUILD_DATE );
+	sprintf( buffer, "Server build %u, compiled %s", BUILD_VERSION, BUILD_DATE );
 	std::string sBuffer( buffer );
 
 	ChatPacket debug( WALL_MESSAGE, "_", sBuffer );

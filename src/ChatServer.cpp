@@ -22,21 +22,32 @@ const unsigned SLEEP_MICROSECONDS = 1000*150;
 const int SERVER_PORT = 7005;
 
 /* number of seconds to full user idle status */
-const unsigned MINUTES_TO_IDLE = 3;
+const unsigned MINUTES_TO_IDLE = 2;
 
 /* number of seconds to idle kick */
-const unsigned MINUTES_TO_IDLE_KICK = 30;
+const unsigned MINUTES_TO_IDLE_KICK = 90;
+
+ChatServer* g_pServer = NULL;
 
 /* On caught signal, add a message and flush logs before exiting. */
 void sig_handler( int signum )
 {
+	if( g_pServer )
+	{
+		ChatPacket msg( WALL_MESSAGE, "_", "AAAA! EL SERVIDOR ESTÁ TERMINANDO! VAMOS A MORIR EN 3 SEGUNDOS!" );
+		g_pServer->Broadcast( &msg );
+	}
+
 	Logger::SystemLog( "Caught code %d (%s): exiting.", signum, strsignal(signum) );
-	Logger::Flush();
+
+	sleep( 3 );
 	exit(signum);
 }
 
 ChatServer::ChatServer()
 {
+	g_pServer = this;
+
 	m_pListener = new SocketListener;
 	m_pListener->Connect( SERVER_PORT );
 
@@ -104,7 +115,7 @@ void ChatServer::MainLoop()
 		if( !m_UsersToDelete.empty() )
 		{
 			set<User*>::iterator it = m_UsersToDelete.begin();
-			for( it; it != m_UsersToDelete.end(); it++ )
+			for( ; it != m_UsersToDelete.end(); it++ )
 				RemoveUser( *it );
 
 			m_UsersToDelete.clear();
@@ -122,7 +133,7 @@ void ChatServer::MainLoop()
 		unsigned iDiff = 1000000 * (tv_end.tv_sec-tv_start.tv_sec) + (tv_end.tv_usec-tv_start.tv_usec);
 
 		if( iDiff >= 150 )
-			printf( "MainLoop took %u usecs to execute.", iDiff );
+			printf( "[MainLoop took %u usecs to execute.]\n", iDiff );
 
 		// give a bunch of time to other processes
 		usleep( SLEEP_MICROSECONDS );
@@ -177,7 +188,8 @@ void ChatServer::HandleUserPacket( User *user, const std::string &buf )
 
 	// broadcast a returned message if the user was idle or away before.
 	// don't broadcast if the user just changed their away message, though.
-	if( user->GetIdleMinutes() > MINUTES_TO_IDLE || (user->IsAway() && packet.iCode != CLIENT_AWAY) )
+	if( user->IsLoggedIn() && ( IsIdle(user) ||
+		(user->IsAway() && packet.iCode != CLIENT_AWAY)) )
 	{
 		ChatPacket msg( CLIENT_BACK, user->GetName(), "_" );
 		Broadcast( &msg );
@@ -314,6 +326,8 @@ void ChatServer::Broadcast( const ChatPacket *packet, const std::string *sRoom )
 	// Write(). we only need ToString (which is expensive) once this way.
 	const std::string sPacketData = packet->ToString();
 
+	Logger::SystemLog( "Broadcasting \"%s\"", sPacketData.c_str() );
+
 	// if no room is given, or this user is in the room, send it!
 	for( set<User*>::const_iterator it = m_Users.begin(); it != m_Users.end(); it++ )
 	{
@@ -329,6 +343,8 @@ void ChatServer::Broadcast( const ChatPacket *packet, const std::string *sRoom )
 
 void ChatServer::Send( const ChatPacket *packet, User *user )
 {
+	Logger::SystemLog( "Sending \"%s\" to %s", 
+packet->ToString().c_str(), user->GetName().c_str() );
 	Write( packet->ToString(), user );
 }
 
