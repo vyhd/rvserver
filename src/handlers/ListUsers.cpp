@@ -29,7 +29,7 @@ void GetCode( ChatServer *server, User *user, std::string& sCode )
 		Logger::SystemLog( "Server says %s is idle for %u minutes", user->GetName().c_str(), user->GetIdleMinutes() );
 		sCode.push_back( 'i' );
 		char sIdleTime[4];
-		sprintf( sIdleTime, "%04u", user->GetIdleMinutes() );
+		snprintf( sIdleTime, 4, "%04u", user->GetIdleMinutes() );
 		sCode.append( sIdleTime );
 	}
 	else

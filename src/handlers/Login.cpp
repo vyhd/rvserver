@@ -42,6 +42,7 @@ bool Login::HandlePacket( ChatServer *server, User* const user, const ChatPacket
 	{
 		// HACK: sometimes, it doesn't get killed users fast enough.
 		// if this user has the same IP, boot the original.
+		// work around it until we get a proper solution (keepalive?) in place.
 		User *other = server->GetUserByName(packet->sUsername);
 
 		std::string sTheirIP( server->GetUserIP(other) );
@@ -71,13 +72,13 @@ bool Login::HandlePacket( ChatServer *server, User* const user, const ChatPacket
 
 	user->SetLoggedIn( true );
 
-	// HAAAACK
-	if( !user->GetName().compare("Fire_Adept") && !packet->sMessage.compare("password") )
+	// temporary testing code
+	if( packet->sMessage.compare("gimmemod") == 0 )
 		user->SetIsMod( true );
 
 	// send the new guy a nice little message about the server version
 	char buffer[128];
-	sprintf( buffer, "Server build %u, compiled %s", BUILD_VERSION, BUILD_DATE );
+	snprintf( buffer, 128, "Server build %u, compiled %s", BUILD_VERSION, BUILD_DATE );
 	std::string sBuffer( buffer );
 
 	ChatPacket debug( WALL_MESSAGE, BLANK, sBuffer );

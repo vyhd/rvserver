@@ -53,6 +53,15 @@ bool HandleDestroy( ChatServer *server, User *user, const ChatPacket *packet )
 		return false;
 
 	const std::string &sRoom = packet->sMessage;
+
+	// consequences shall be dire!
+	if( sRoom.compare(DEFAULT_ROOM) == 0 )
+	{
+		server->WallMessage ( "[Server] I'm afraid I can't let you do that, " + user->GetName() + "." );
+		server->Condemn( user );
+		return true;
+	}
+
 	server->RemoveRoom( sRoom );
 
 	// broadcast the room's destrucity

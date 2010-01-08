@@ -78,7 +78,7 @@ string ChatPacket::ToString() const
 	size_t iLen = 3 + sUsername.size() + sMessage.size() + 9 + 5;
 	char *sBuffer = new char[iLen];
 
-	sprintf( sBuffer, "%u`%s`%s`%u`%u`%u", iCode, sUsername.c_str(), sMessage.c_str(), r, g, b );
+	snprintf( sBuffer, iLen, "%u`%s`%s`%u`%u`%u", iCode, sUsername.c_str(), sMessage.c_str(), r, g, b );
 	string ret( sBuffer );
 	delete sBuffer;
 

@@ -40,8 +40,15 @@ void sig_handler( int signum )
 		g_pServer->Broadcast( &msg );
 	}
 
-
 	sleep( 5 );
+
+	// cleanly remove all users
+	set<User*>::const_iterator it = g_pServer->GetUserList()->begin();
+	for( ; it != g_pServer->GetUserList()->end(); it++ )
+	{
+		ChatPacket kill( USER_PART, (*it)->GetName(), "_" );
+		g_pServer->Broadcast( &kill );
+	}
 
 	Logger::SystemLog( "Caught code %d (%s): exiting.", signum, strsignal(signum) );
 	exit(signum);
@@ -247,7 +254,7 @@ void ChatServer::CheckIdleStatus( User *user )
 
 	// print the idle time into a string, broadcast it
 	char sIdleTime[5];
-	sprintf( sIdleTime, "%04u", iIdleMinutes );
+	snprintf( sIdleTime, 4, "%04u", iIdleMinutes );
 	ChatPacket idle( CLIENT_IDLE, user->GetName(), sIdleTime );
 	Broadcast( &idle );
 
