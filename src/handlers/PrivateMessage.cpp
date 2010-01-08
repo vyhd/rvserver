@@ -14,7 +14,7 @@ bool PrivateMessage::HandlePacket( ChatServer *server, User *user, const ChatPac
 		return false;
 
 	// find the user whose name is given in the first param
-	User *recipient = server->GetUserByName( packet->sParam1 );
+	User *recipient = server->GetUserByName( packet->sUsername );
 
 	// user not found. bizarre, huh?
 	if( recipient == NULL )
@@ -24,7 +24,7 @@ bool PrivateMessage::HandlePacket( ChatServer *server, User *user, const ChatPac
 	ChatPacket msg( *packet );
 
 	// set the first param to this user's name
-	msg.sParam1.assign( user->GetName() );
+	msg.sUsername.assign( user->GetName() );
 
 	// send the packet off to the target
 	server->Send( &msg, recipient );

@@ -36,6 +36,7 @@ Handlers = \
 	handlers/Logout.cpp \
 	handlers/Message.cpp \
 	handlers/ModActions.cpp \
+	handlers/RoomActions.cpp \
 	handlers/PrivateMessage.cpp \
 	handlers/Typing.cpp
 

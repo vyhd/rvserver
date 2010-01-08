@@ -11,7 +11,7 @@ bool HandleUnban( ChatServer *server, User *user, const ChatPacket *packet );
 bool HandleMute( ChatServer *server, User *user, const ChatPacket *packet );
 bool HandleUnmute( ChatServer *server, User *user, const ChatPacket *packet );
 bool HandleQuery( ChatServer *server, User *user, const ChatPacket *packet );
-//bool ForceJoin( ChatServer *server, User *user, const ChatPacket *packet );
+bool HandleClear( ChatServer *server, User *user, const ChatPacket *packet );
 
 REGISTER_HANDLER_FN( USER_KICK, HandleKick );
 REGISTER_HANDLER_FN( USER_DISABLE, HandleDisable );
@@ -20,7 +20,7 @@ REGISTER_HANDLER_FN( USER_UNBAN, HandleUnban );
 REGISTER_HANDLER_FN( USER_MUTE, HandleMute );
 REGISTER_HANDLER_FN( USER_UNMUTE, HandleUnmute );
 REGISTER_HANDLER_FN( IP_QUERY, HandleQuery );
-//REGISTER_HANDLER_FN( FORCE_JOIN, ForceJoin );
+REGISTER_HANDLER_FN( FORCE_CLEAR, HandleClear );
 
 const char* GetAction( uint16_t iCode )
 {
@@ -58,7 +58,7 @@ inline User* GetTarget( ChatServer *server, User* user, const std::string &sName
 /* a removal action results in the disconnection of the targeted client. */
 bool HandleRemoveAction( ChatServer *server, User *user, const ChatPacket *packet )
 {
-	User *target = GetTarget( server, user, packet->sParam2 );
+	User *target = GetTarget( server, user, packet->sMessage );
 
 	if( target == NULL )
 		return false;
@@ -81,7 +81,7 @@ bool HandleRemoveAction( ChatServer *server, User *user, const ChatPacket *packe
  * the client handles the message, so we just broadcast the packet. */
 bool HandleMuteAction( ChatServer *server, User *user, const ChatPacket *packet, bool bMute )
 {
-	User* target = GetTarget( server, user, packet->sParam2 );
+	User* target = GetTarget( server, user, packet->sMessage );
 
 	Logger::SystemLog( "HandleMuteAction(%p, %p, %p), target %p", server, user, packet, target );
 
@@ -130,7 +130,7 @@ bool HandleUnmute( ChatServer *server, User *user, const ChatPacket *packet )
 
 bool HandleQuery( ChatServer *server, User *user, const ChatPacket *packet )
 {
-	User *target = GetTarget( server, user, packet->sParam1 );
+	User *target = GetTarget( server, user, packet->sUsername );
 
 	if( target == NULL )
 		return false;
@@ -145,5 +145,15 @@ bool HandleQuery( ChatServer *server, User *user, const ChatPacket *packet )
 
 	server->WallMessage( sMessage );
 
+	return true;
+}
+
+bool HandleClear( ChatServer *server, User *user, const ChatPacket *packet )
+{
+	if( !user->IsMod() )
+		return false;
+
+	ChatPacket msg( FORCE_CLEAR, user->GetName(), BLANK );
+	server->Broadcast( &msg );
 	return true;
 }

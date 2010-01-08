@@ -10,7 +10,7 @@ bool HandleAway( ChatServer *server, User *user, const ChatPacket *packet )
 	if( user->IsMuted() )
 		return false;
 
-	user->SetMessage( packet->sParam2 );
+	user->SetMessage( packet->sMessage );
 
 	// broadcast a status change packet
 	ChatPacket away( CLIENT_AWAY, user->GetName(), user->GetMessage() );

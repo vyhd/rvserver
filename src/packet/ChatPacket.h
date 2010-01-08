@@ -8,9 +8,13 @@
 
 const uint16_t INVALID_CODE = 0xFFFF;
 
+// defines a blank packet field
+const std::string BLANK = "_";
+
 struct ChatPacket
 {
 public:
+
 	/* Default constructor. */
 	ChatPacket();
 
@@ -21,12 +25,12 @@ public:
 	ChatPacket( uint16_t iCode );
 
 	/* Constructor for partial creation (no colours). */
-	ChatPacket( uint16_t iCode, const std::string &sParam1,
-		const std::string &sParam2 );
+	ChatPacket( uint16_t iCode, const std::string &sUsername,
+		const std::string &sMessage );
 
 	/* Constructor for full packet creation. */
-	ChatPacket( uint16_t iCode, const std::string &sParam1,
-		const std::string &sParam2, uint8_t r, uint8_t g, uint8_t b );
+	ChatPacket( uint16_t iCode, const std::string &sUsername,
+		const std::string &sMessage, uint8_t r, uint8_t g, uint8_t b );
 
 	/* Shortcut constructor for ChatPacket() and FromString(str). */
 	ChatPacket( const std::string &sData );
@@ -42,8 +46,8 @@ public:
 
 public:
 	uint16_t iCode;
-	std::string sParam1;
-	std::string sParam2;
+	std::string sUsername;
+	std::string sMessage;
 	uint8_t	r, g, b;
 
 };

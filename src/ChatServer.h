@@ -5,7 +5,7 @@
 #define CHAT_SERVER_H
 
 #include <set>
-#include <vector>
+#include <list>
 #include <string>
 #include "network/SocketListener.h"
 
@@ -33,8 +33,8 @@ public:
 	/* returns a const reference to the Users set */
 	const std::set<User*>* GetUserList() const	{ return &m_Users; }
 
-	/* returns a const reference to the Rooms vector */
-	const std::vector<std::string>* GetRoomList() const	{ return &m_Rooms; }
+	/* returns a const reference to the Rooms list */
+	const std::list<std::string>* GetRoomList() const	{ return &m_Rooms; }
 
 	/* a few self-explanatory room functions */
 	bool RoomExists( const std::string &str ) const;
@@ -49,6 +49,7 @@ public:
 
 	/* sends a packet to the specified user. */
 	void Send( const ChatPacket *packet, User *user );
+	void Send( const std::string &str, User *user );
 
 	/* main processing loop */
 	void MainLoop();
@@ -92,7 +93,7 @@ private:
 	std::set<User*> m_UsersToDelete;
 
 	/* list of all rooms on the server */
-	std::vector<std::string> m_Rooms;
+	std::list<std::string> m_Rooms;
 };
 
 #endif // CHAT_SERVER_H

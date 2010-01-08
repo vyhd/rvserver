@@ -13,29 +13,29 @@ ChatPacket::ChatPacket() : iCode( INVALID_CODE )
 ChatPacket::ChatPacket( const ChatPacket &other )
 {
 	iCode = other.iCode;
-	sParam1.assign( other.sParam1 );
-	sParam2.assign( other.sParam2 );
+	sUsername.assign( other.sUsername );
+	sMessage.assign( other.sMessage );
 	r = other.r;
 	g = other.g;
 	b = other.b;
 }
 
-ChatPacket::ChatPacket( uint16_t iCode ) : sParam1("_"), sParam2("_")
+ChatPacket::ChatPacket( uint16_t iCode ) : sUsername(BLANK), sMessage(BLANK)
 {
 	this->iCode = iCode;
 	r = g = b = 0;
 }
 
-ChatPacket::ChatPacket( uint16_t iCode, const std::string &sParam1_,
-	const std::string &sParam2_ ) : sParam1( sParam1_ ), sParam2( sParam2_ )
+ChatPacket::ChatPacket( uint16_t iCode, const std::string &sUsername_,
+	const std::string &sMessage_ ) : sUsername( sUsername_ ), sMessage( sMessage_ )
 {
 	this->iCode = iCode;
 	r = g = b = 0;
 }
 
-ChatPacket::ChatPacket( uint16_t iCode, const std::string &sParam1_,
-	const std::string &sParam2_, uint8_t r, uint8_t g, uint8_t b ) :
-	sParam1( sParam1_ ), sParam2( sParam2_ )
+ChatPacket::ChatPacket( uint16_t iCode, const std::string &sUsername_,
+	const std::string &sMessage_, uint8_t r, uint8_t g, uint8_t b ) :
+	sUsername( sUsername_ ), sMessage( sMessage_ )
 {
 	this->iCode = iCode;
 	this->r = r;
@@ -61,8 +61,8 @@ bool ChatPacket::FromString( const string &sData )
 		return false;
 
 	iCode = atoi( vTokens[0].c_str() );
-	sParam1 = vTokens[1];
-	sParam2 = vTokens[2];
+	sUsername = vTokens[1];
+	sMessage = vTokens[2];
 	r = atoi( vTokens[3].c_str() );
 	g = atoi( vTokens[4].c_str() );
 	b = atoi( vTokens[5].c_str() );
@@ -75,10 +75,10 @@ bool ChatPacket::FromString( const string &sData )
 string ChatPacket::ToString() const
 {
 	// 3 digits for code, two variable params, 9 digits for RGB, 5 delims
-	size_t iLen = 3 + sParam1.size() + sParam2.size() + 9 + 5;
+	size_t iLen = 3 + sUsername.size() + sMessage.size() + 9 + 5;
 	char *sBuffer = new char[iLen];
 
-	sprintf( sBuffer, "%u`%s`%s`%u`%u`%u", iCode, sParam1.c_str(), sParam2.c_str(), r, g, b );
+	sprintf( sBuffer, "%u`%s`%s`%u`%u`%u", iCode, sUsername.c_str(), sMessage.c_str(), r, g, b );
 	string ret( sBuffer );
 	delete sBuffer;
 

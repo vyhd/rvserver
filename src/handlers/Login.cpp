@@ -38,11 +38,11 @@ bool Login::HandlePacket( ChatServer *server, User* const user, const ChatPacket
 		return false;
 
 	// if this name is already logged in, don't let it log in again.
-	if( server->GetUserByName(packet->sParam1) != NULL )
+	if( server->GetUserByName(packet->sUsername) != NULL )
 	{
 		// HACK: sometimes, it doesn't get killed users fast enough.
 		// if this user has the same IP, boot the original.
-		User *other = server->GetUserByName(packet->sParam1);
+		User *other = server->GetUserByName(packet->sUsername);
 
 		std::string sTheirIP( server->GetUserIP(other) );
 
@@ -63,7 +63,7 @@ bool Login::HandlePacket( ChatServer *server, User* const user, const ChatPacket
 	}
 
 	// set the user's name from the login packet
-	user->SetName( packet->sParam1 );
+	user->SetName( packet->sUsername );
 
 	// create and send a response packet.
 	ChatPacket response( ACCESS_GRANTED );
@@ -72,7 +72,7 @@ bool Login::HandlePacket( ChatServer *server, User* const user, const ChatPacket
 	user->SetLoggedIn( true );
 
 	// HAAAACK
-	if( !user->GetName().compare("Fire_Adept") && !packet->sParam2.compare("password") )
+	if( !user->GetName().compare("Fire_Adept") && !packet->sMessage.compare("password") )
 		user->SetIsMod( true );
 
 	// send the new guy a nice little message about the server version
@@ -80,7 +80,7 @@ bool Login::HandlePacket( ChatServer *server, User* const user, const ChatPacket
 	sprintf( buffer, "Server build %u, compiled %s", BUILD_VERSION, BUILD_DATE );
 	std::string sBuffer( buffer );
 
-	ChatPacket debug( WALL_MESSAGE, "_", sBuffer );
+	ChatPacket debug( WALL_MESSAGE, BLANK, sBuffer );
 	server->Send( &debug, user );
 
 	// new guy's here! let everyone know!

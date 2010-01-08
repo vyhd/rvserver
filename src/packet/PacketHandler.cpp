@@ -31,8 +31,8 @@ bool PacketHandler::Handle( ChatServer *server, User *user, const ChatPacket *pa
 
 	Logger::SystemLog( "Unhandled packet data:" );
 	Logger::SystemLog( "\tCode: %d", packet->iCode );
-	Logger::SystemLog( "\tParam 1: %s", packet->sParam1.c_str() );
-	Logger::SystemLog( "\tParam 2: %s", packet->sParam2.c_str() );
+	Logger::SystemLog( "\tUsername: %s", packet->sUsername.c_str() );
+	Logger::SystemLog( "\tMessage: %s", packet->sMessage.c_str() );
 	Logger::SystemLog( "\tRGB: %d/%d/%d", packet->r, packet->g, packet->b );
 
 	return false;

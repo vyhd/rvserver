@@ -1,5 +1,7 @@
 #include "packet/PacketHandler.h"
 
+using namespace std;
+
 namespace RoomList
 {
 	bool HandlePacket( ChatServer *server, User *user, const ChatPacket *packet );
@@ -9,11 +11,13 @@ REGISTER_HANDLER( ROOM_LIST, RoomList );
 
 bool RoomList::HandlePacket( ChatServer *server, User *user, const ChatPacket *packet )
 {
-//	const std::vector<std::string>
-	ChatPacket main( ROOM_LIST, "_", "Main" );
-	ChatPacket spam( ROOM_LIST, "_", "Spam Room" );
+	const list<string> *rooms = server->GetRoomList();
 
-	server->Send( &main, user );
-	server->Send( &spam, user );
+	for( list<string>::const_iterator it = rooms->begin(); it != rooms->end(); it++ )
+	{
+		ChatPacket room( ROOM_LIST, BLANK, *it );
+		server->Send( &room, user );
+	}
+
 	return true;
 }

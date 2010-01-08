@@ -9,6 +9,6 @@ REGISTER_HANDLER( CLIENT_CONFIG, Config );
 
 bool Config::HandlePacket( ChatServer *server, User *user, const ChatPacket *packet )
 {
-	user->SetPrefs( packet->sParam2 );
+	user->SetPrefs( packet->sMessage );
 	return true;
 }

@@ -17,7 +17,7 @@ bool RoomMessage::HandlePacket( ChatServer *server, User *user, const ChatPacket
 	ChatPacket msg( *packet );
 
 	// set the first param to the user's name
-	msg.sParam1.assign( user->GetName() );
+	msg.sUsername.assign( user->GetName() );
 
 	// broadcast the packet to the user's room
 	server->Broadcast( &msg, &user->GetRoom() );

@@ -30,7 +30,7 @@ bool PacketUtil::NeedsSplit( const string& in )
 	return in.length() - 1 != in.find_first_of("\n");
 }
 
-void PacketUtil::SplitPacket( const string& in, vector<string>& add )
+void PacketUtil::Split( const string& in, vector<string>& add )
 {
 	// packets are delimited by a newline.
 	split( in, add, '\n' );

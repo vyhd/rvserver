@@ -56,7 +56,7 @@ bool ListUsers::HandlePacket( ChatServer *server, User *user, const ChatPacket *
 	}
 
 	// signify that the user update is done
-	ChatPacket finish( USER_LIST, "_", "done" );
+	ChatPacket finish( USER_LIST, BLANK, "done" );
 	server->Send( &finish, user );
 	return true;
 }

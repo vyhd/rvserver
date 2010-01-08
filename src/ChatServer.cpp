@@ -1,6 +1,8 @@
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>	// for memset, strcasecmp
+#include <vector>	// for PacketUtil::Split
+#include <algorithm>	// for find()
 
 #include <unistd.h>
 #include <signal.h>
@@ -34,13 +36,14 @@ void sig_handler( int signum )
 {
 	if( g_pServer )
 	{
-		ChatPacket msg( WALL_MESSAGE, "_", "AAAA! EL SERVIDOR ESTÁ TERMINANDO! VAMOS A MORIR EN 3 SEGUNDOS!" );
+		ChatPacket msg( WALL_MESSAGE, BLANK, "AAAA! EL SERVIDOR ESTA TERMINANDO! VAMOS A MORIR EN 5 SEGUNDOS!" );
 		g_pServer->Broadcast( &msg );
 	}
 
-	Logger::SystemLog( "Caught code %d (%s): exiting.", signum, strsignal(signum) );
 
-	sleep( 3 );
+	sleep( 5 );
+
+	Logger::SystemLog( "Caught code %d (%s): exiting.", signum, strsignal(signum) );
 	exit(signum);
 }
 
@@ -82,7 +85,7 @@ void ChatServer::RemoveUser( User *user )
 	if( user->IsLoggedIn() )
 	{
 		user->SetLoggedIn( false );
-		ChatPacket msg( USER_PART, user->GetName(), "_" );
+		ChatPacket msg( USER_PART, user->GetName(), BLANK );
 		Broadcast( &msg );
 	}
 
@@ -161,7 +164,7 @@ void ChatServer::UpdateUser( User *user )
 	{
 		// we have multiple packets. split them and handle each.
 		vector<std::string> vPackets;
-		PacketUtil::SplitPacket( sBuffer, vPackets );
+		PacketUtil::Split( sBuffer, vPackets );
 
 		for( unsigned i = 0; i < vPackets.size(); i++ )
 			HandleUserPacket( user, vPackets[i] );
@@ -191,7 +194,7 @@ void ChatServer::HandleUserPacket( User *user, const std::string &buf )
 	if( user->IsLoggedIn() && ( IsIdle(user) ||
 		(user->IsAway() && packet.iCode != CLIENT_AWAY)) )
 	{
-		ChatPacket msg( CLIENT_BACK, user->GetName(), "_" );
+		ChatPacket msg( CLIENT_BACK, user->GetName(), BLANK );
 		Broadcast( &msg );
 	}
 
@@ -204,7 +207,7 @@ void ChatServer::HandleUserPacket( User *user, const std::string &buf )
 
 	// If we have a login packet, wipe the password from the log.
 	if( packet.iCode == USER_JOIN )
-		packet.sParam2 = "[censored]";
+		packet.sMessage = "[censored]";
 
 	/* write this packet to the log, including the user prefix, e.g.
 	 * Fire_Adept@192.168.1.1	3`_`hey sup d00dz`3`13`37
@@ -266,6 +269,53 @@ User* ChatServer::GetUserByName( const std::string &sName ) const
 
 	// no match found
 	return NULL;
+}
+
+bool ChatServer::RoomExists( const std::string &sRoom ) const
+{
+	list<string>::const_iterator it = find( m_Rooms.begin(), m_Rooms.end(), sRoom );
+
+	// if we have an iterator, then the room is in the list
+	return (it != m_Rooms.end());
+}
+
+void ChatServer::AddRoom( const std::string &sRoom )
+{
+	// don't allow duplicates
+	if( RoomExists(sRoom) )
+		return;
+
+	m_Rooms.push_back( sRoom );
+}
+
+void ChatServer::RemoveRoom( const std::string &sRoom )
+{
+	// don't remove rooms that don't exist
+	if( !RoomExists(sRoom) )
+		return;
+
+	if( sRoom.compare(DEFAULT_ROOM) == 0 )
+	{
+		Logger::SystemLog( "Someone tried to /destroy Main! Ignoring..." );
+		return;
+	}
+
+	// find the room in the room list and remove it
+	m_Rooms.remove( sRoom );
+
+	// remove all users who were in this room and boot them back to Main
+	for( set<User*>::iterator it = m_Users.begin(); it != m_Users.end(); it++ )
+	{
+		User *user = *it;
+
+		if( user->IsInRoom(sRoom) )
+		{
+			user->SetRoom( DEFAULT_ROOM );
+
+			ChatPacket msg( JOIN_ROOM, user->GetName(), DEFAULT_ROOM );
+			Broadcast( &msg );
+		}
+	}
 }
 
 /* helper function to get an IP address from a user */
@@ -343,14 +393,17 @@ void ChatServer::Broadcast( const ChatPacket *packet, const std::string *sRoom )
 
 void ChatServer::Send( const ChatPacket *packet, User *user )
 {
-	Logger::SystemLog( "Sending \"%s\" to %s", 
-packet->ToString().c_str(), user->GetName().c_str() );
 	Write( packet->ToString(), user );
+}
+
+void ChatServer::Send( const std::string &str, User *user )
+{
+	Write( str, user );
 }
 
 void ChatServer::WallMessage( const std::string &sMessage )
 {
-	const ChatPacket packet( WALL_MESSAGE, "_", sMessage );
+	const ChatPacket packet( WALL_MESSAGE, BLANK, sMessage );
 	Broadcast( &packet );
 }
 

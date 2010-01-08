@@ -13,7 +13,7 @@ namespace PacketUtil
 	bool NeedsSplit( const std::string& in );
 
 	/* splits a string into one string per packet. */
-	void SplitPacket( const std::string& in, std::vector<std::string>& add );
+	void Split( const std::string& in, std::vector<std::string>& add );
 }
 
 #endif // PACKET_UTIL_H

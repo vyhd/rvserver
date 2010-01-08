@@ -29,9 +29,6 @@ enum MessageCode
 	// timedban command
 	USER_TIMEDBAN	= 16,
 
-	// mod chat
-	MOD_CHAT	= 20,
-
 	// login responses
 	ACCESS_GRANTED	= 100,
 	ACCESS_DENIED	= 101,

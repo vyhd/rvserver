@@ -14,7 +14,7 @@ bool RoomAction::HandlePacket( ChatServer *server, User *user, const ChatPacket 
 		return false;
 
 	// create a packet for the broadcast using the sender's name
-	ChatPacket msg( packet->iCode, user->GetName(), packet->sParam2 );
+	ChatPacket msg( packet->iCode, user->GetName(), packet->sMessage );
 
 	// broadcast the packet to the user's room
 	server->Broadcast( &msg, &user->GetRoom() );
