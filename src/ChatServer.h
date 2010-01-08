@@ -27,8 +27,11 @@ public:
 	/* returns a char* to a static buffer containing the client's IP */
 	const char* GetUserIP( const User *user ) const;
 
+	/* returns a std::string expressing the user's current state */
+	std::string GetUserState( const User *user ) const;
+
 	/* returns true if this user meets the server criteria for idle */
-	bool IsIdle( User *user ) const;
+	bool IsIdle( const User *user ) const;
 
 	/* returns a const reference to the Users set */
 	const std::set<User*>* GetUserList() const	{ return &m_Users; }
@@ -41,7 +44,7 @@ public:
 	void AddRoom( const std::string &str );
 	void RemoveRoom( const std::string &str );
 
-	/* sends a system message to all users on the server */
+	/* sends a system message to all mods on the server */
 	void WallMessage( const std::string &sMessage );
 
 	/* sends a packet to all users (in a specific room, if given) */

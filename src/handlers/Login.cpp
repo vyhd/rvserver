@@ -9,28 +9,6 @@ namespace Login
 
 REGISTER_HANDLER( USER_JOIN, Login );
 
-std::string GetCode( const User* user, const ChatPacket *packet )
-{
-	std::string ret;
-
-	ret.assign( user->GetRoom() );
-	ret.push_back( '|' );
-
-	// display user level. TODO: user level.
-	if( user->IsMod() )
-		ret.push_back( 'c' );
-	else
-		ret.push_back( '_' );
-
-	// display muted status (M for muted, _ for not)
-	ret.push_back( user->IsMuted() ? 'M' : '_' );
-
-	// user can't be away or idle at this time. blank 'em.
-	ret.append( "__" );
-
-	return ret;
-}	
-
 bool Login::HandlePacket( ChatServer *server, User* const user, const ChatPacket *packet )
 {
 	// don't take this packet from a user that's already in
@@ -85,10 +63,7 @@ bool Login::HandlePacket( ChatServer *server, User* const user, const ChatPacket
 	server->Send( &debug, user );
 
 	// new guy's here! let everyone know!
-	// BEWARE: with g++ 4.0.3 and -g -ggdb -O2, calling GetCode mysteriously
-	// changes the pointer address of "user". We put it here, so it won't
-	// cause problems, but now you know if something like it happens again.
-	ChatPacket msg( USER_JOIN, user->GetName(), GetCode(user,packet) );
+	ChatPacket msg( USER_JOIN, user->GetName(), server->GetUserState(user) );
 	server->Broadcast( &msg );
 
 	return true;

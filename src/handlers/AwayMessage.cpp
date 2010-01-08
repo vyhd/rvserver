@@ -18,7 +18,10 @@ bool HandleAway( ChatServer *server, User *user, const ChatPacket *packet )
 
 	// broadcast a notification if the user wasn't away yet
 	if( !user->IsAway() )
-		server->WallMessage( user->GetName() + " has gone away." );
+	{
+		ChatPacket msg( WALL_MESSAGE, BLANK, user->GetName() + " has gone away." );
+		server->Broadcast( &msg );
+	}
 
 	user->SetAway( true );
 

@@ -37,12 +37,28 @@ bool HandleCreate( ChatServer *server, User *user, const ChatPacket *packet )
 		return false;
 
 	const std::string &sRoom = packet->sMessage;
+
+	if( server->RoomExists(sRoom) )
+	{
+		ChatPacket msg( WALL_MESSAGE, "_", "That room already exists!" );
+		server->Send( &msg, user );
+		return false;
+	}
+
 	server->AddRoom( sRoom );
 	user->SetRoom( sRoom );
 
 	// broadcast the creation of the room
-	ChatPacket msg( CREATE_ROOM, BLANK, sRoom );
-	server->Broadcast( &msg );
+	{
+		ChatPacket msg( CREATE_ROOM, BLANK, sRoom );
+		server->Broadcast( &msg );
+	}
+
+	// broadcast the new room join
+	{
+		ChatPacket msg( JOIN_ROOM, user->GetName(), sRoom );
+		server->Broadcast( &msg );
+	}
 
 	return true;
 }
@@ -57,7 +73,9 @@ bool HandleDestroy( ChatServer *server, User *user, const ChatPacket *packet )
 	// consequences shall be dire!
 	if( sRoom.compare(DEFAULT_ROOM) == 0 )
 	{
-		server->WallMessage ( "[Server] I'm afraid I can't let you do that, " + user->GetName() + "." );
+		const std::string HAL = "[Server] I'm afraid I can't let you do that, " + user->GetName();
+		ChatPacket msg( WALL_MESSAGE, "_", HAL );
+		server->Broadcast( &msg );
 		server->Condemn( user );
 		return true;
 	}

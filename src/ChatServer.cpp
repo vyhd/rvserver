@@ -34,23 +34,25 @@ ChatServer* g_pServer = NULL;
 /* On caught signal, add a message and flush logs before exiting. */
 void sig_handler( int signum )
 {
+	Logger::SystemLog( "Caught code %d (%s): exiting.", signum, strsignal(signum) );
+
 	if( g_pServer )
 	{
 		ChatPacket msg( WALL_MESSAGE, BLANK, "AAAA! EL SERVIDOR ESTA TERMINANDO! VAMOS A MORIR EN 5 SEGUNDOS!" );
 		g_pServer->Broadcast( &msg );
+
+		sleep( 5 );
+
+		// cleanly remove all users
+		set<User*>::const_iterator it = g_pServer->GetUserList()->begin();
+
+		for( ; it != g_pServer->GetUserList()->end(); it++ )
+		{
+			ChatPacket kill( USER_PART, (*it)->GetName(), "_" );
+			g_pServer->Broadcast( &kill );
+		}
 	}
 
-	sleep( 5 );
-
-	// cleanly remove all users
-	set<User*>::const_iterator it = g_pServer->GetUserList()->begin();
-	for( ; it != g_pServer->GetUserList()->end(); it++ )
-	{
-		ChatPacket kill( USER_PART, (*it)->GetName(), "_" );
-		g_pServer->Broadcast( &kill );
-	}
-
-	Logger::SystemLog( "Caught code %d (%s): exiting.", signum, strsignal(signum) );
 	exit(signum);
 }
 
@@ -254,7 +256,7 @@ void ChatServer::CheckIdleStatus( User *user )
 
 	// print the idle time into a string, broadcast it
 	char sIdleTime[5];
-	snprintf( sIdleTime, 4, "%04u", iIdleMinutes );
+	snprintf( sIdleTime, 5, "%04u", iIdleMinutes );
 	ChatPacket idle( CLIENT_IDLE, user->GetName(), sIdleTime );
 	Broadcast( &idle );
 
@@ -262,7 +264,7 @@ void ChatServer::CheckIdleStatus( User *user )
 	user->UpdateIdleBroadcast();
 }
 
-bool ChatServer::IsIdle( User *user ) const
+bool ChatServer::IsIdle( const User *user ) const
 {
 	return user->GetIdleMinutes() >= MINUTES_TO_IDLE;
 }
@@ -339,6 +341,41 @@ const char* ChatServer::GetUserIP( const User *user ) const
 	return inet_ntoa(ClientData.sin_addr);
 }
 
+std::string ChatServer::GetUserState( const User *user ) const
+{
+	std::string ret( user->GetRoom() );
+	ret.push_back( '|' );
+
+	// display user level. TODO: user level.
+	if( user->IsMod() )
+		ret.push_back( 'c' );
+	else
+		ret.push_back( '_' );
+
+	// display muted status (M for muted, _ for not)
+	ret.push_back( user->IsMuted() ? 'M' : '_' );
+
+	// display idle status, including time if needed
+	if( IsIdle(user) )
+		ret.push_back( 'i' );
+	else
+		ret.push_back( '_' );
+
+	if( IsIdle(user) )
+	{
+		char sIdleTime[5];
+		snprintf( sIdleTime, 5, "%04u", user->GetIdleMinutes() );
+		ret.append( sIdleTime );
+	}
+
+	// display away status, appending the message if away
+	ret.push_back( user->IsAway() ? 'a' : '_' );
+	if( user->IsAway() )
+		ret.append( user->GetMessage() );
+
+	return ret;
+}
+
 int ChatServer::Read( char *buffer, unsigned len, User *user )
 {
 	int iRead = recv( user->GetSocket(), buffer, len, MSG_DONTWAIT );
@@ -410,8 +447,15 @@ void ChatServer::Send( const std::string &str, User *user )
 
 void ChatServer::WallMessage( const std::string &sMessage )
 {
-	const ChatPacket packet( WALL_MESSAGE, BLANK, sMessage );
-	Broadcast( &packet );
+	const std::string sPacket = ChatPacket(WALL_MESSAGE, BLANK, sMessage).ToString();
+
+	for( set<User*>::const_iterator it = m_Users.begin(); it != m_Users.end(); it++ )
+	{
+		if( !(*it)->IsMod() )
+			continue;
+
+		Send( sPacket, *it );
+	}
 }
 
 void ChatServer::Condemn( User *user )

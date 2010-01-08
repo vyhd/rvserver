@@ -2,7 +2,6 @@
  * we can stuff most of them into one file and share routines to save code. */
 
 #include "packet/PacketHandler.h"
-#include "logger/Logger.h"
 
 bool HandleKick( ChatServer *server, User *user, const ChatPacket *packet );
 bool HandleDisable( ChatServer *server, User *user, const ChatPacket *packet );
@@ -37,15 +36,9 @@ const char* GetAction( uint16_t iCode )
 	}
 }
 
-/* returns a valid target if 'user' is a mod and sName gets a user. */
+/* returns a valid target if 'user' if sName references a user. */
 inline User* GetTarget( ChatServer *server, User* user, const std::string &sName )
 {
-	if( !user->IsMod() )
-	{
-		Logger::SystemLog( "Not mod: returning NULL" );
-		return NULL;
-	}
-
 	User* target = server->GetUserByName( sName );
 
 	// if not logged in, we don't mess with them
@@ -56,23 +49,27 @@ inline User* GetTarget( ChatServer *server, User* user, const std::string &sName
 }
 
 /* a removal action results in the disconnection of the targeted client. */
+/* Intentionally re-broken 01/08/2010 to re-enable 'kickspeak' bug. */
 bool HandleRemoveAction( ChatServer *server, User *user, const ChatPacket *packet )
 {
-	User *target = GetTarget( server, user, packet->sMessage );
-
-	if( target == NULL )
+	if( !user->IsMod() )
 		return false;
 
 	/* send a global message about this action */
-	std::string sMessage = target->GetName() + " was " +
+	std::string sMessage = packet->sMessage + " was " +
 		GetAction(packet->iCode) + " by " + user->GetName();
 
 	server->WallMessage( sMessage );
 
-	// notify the target about the taken action
-	ChatPacket notify( packet->iCode );
-	server->Send( &notify, target );
-	server->Condemn( target );
+	User *target = GetTarget( server, user, packet->sMessage );
+
+	// notify the target about the taken action, if they exist
+	if( target != NULL )
+	{
+		ChatPacket notify( packet->iCode );
+		server->Send( &notify, target );
+		server->Condemn( target );
+	}
 
 	return true;
 }
@@ -81,9 +78,10 @@ bool HandleRemoveAction( ChatServer *server, User *user, const ChatPacket *packe
  * the client handles the message, so we just broadcast the packet. */
 bool HandleMuteAction( ChatServer *server, User *user, const ChatPacket *packet, bool bMute )
 {
-	User* target = GetTarget( server, user, packet->sMessage );
+	if( !user->IsMod() )
+		return false;
 
-	Logger::SystemLog( "HandleMuteAction(%p, %p, %p), target %p", server, user, packet, target );
+	User* target = GetTarget( server, user, packet->sMessage );
 
 	if( target == NULL )
 		return false;
@@ -115,7 +113,8 @@ bool HandleBan( ChatServer *server, User *user, const ChatPacket *packet )
 // XXX: won't work right now
 bool HandleUnban( ChatServer *server, User *user, const ChatPacket *packet )
 {
-	return HandleRemoveAction( server, user, packet );
+	return true;
+//	return HandleRemoveAction( server, user, packet );
 }
 
 bool HandleMute( ChatServer *server, User *user, const ChatPacket *packet )
@@ -130,6 +129,9 @@ bool HandleUnmute( ChatServer *server, User *user, const ChatPacket *packet )
 
 bool HandleQuery( ChatServer *server, User *user, const ChatPacket *packet )
 {
+	if( !user->IsMod() )
+		return false;
+
 	User *target = GetTarget( server, user, packet->sUsername );
 
 	if( target == NULL )
@@ -153,6 +155,7 @@ bool HandleClear( ChatServer *server, User *user, const ChatPacket *packet )
 	if( !user->IsMod() )
 		return false;
 
+	// broadcast a message to clients so they blank their screens
 	ChatPacket msg( FORCE_CLEAR, user->GetName(), BLANK );
 	server->Broadcast( &msg );
 	return true;
