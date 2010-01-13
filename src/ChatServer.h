@@ -39,7 +39,7 @@ public:
 	/* returns a const reference to the Rooms list */
 	const std::list<std::string>* GetRoomList() const	{ return &m_Rooms; }
 
-	/* a few self-explanatory room functions */
+	/* a few self-explanatory room functions */	
 	bool RoomExists( const std::string &str ) const;
 	void AddRoom( const std::string &str );
 	void RemoveRoom( const std::string &str );

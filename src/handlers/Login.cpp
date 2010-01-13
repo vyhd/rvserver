@@ -1,6 +1,7 @@
 #include "packet/PacketHandler.h"
 #include "logger/Logger.h"
 #include "verinfo.h"
+#include <cstdlib>
 
 namespace Login
 {
@@ -52,7 +53,19 @@ bool Login::HandlePacket( ChatServer *server, User* const user, const ChatPacket
 
 	// temporary testing code
 	if( packet->sMessage.compare("gimmemod") == 0 )
-		user->SetIsMod( true );
+	{
+		char code = MOD_LEVELS[rand() % NUM_MOD_LEVELS];
+		user->SetLevel( code );
+	}
+	else
+	{
+		const char USER_LEVELS[] = { 'B', 'F', '!' };
+		char code = USER_LEVELS[rand() % 3];
+		user->SetLevel( code );
+	}
+
+	if( !packet->sUsername.compare("Sammy") )
+		user->SetLevel( 'C' );
 
 	// send the new guy a nice little message about the server version
 	char buffer[128];

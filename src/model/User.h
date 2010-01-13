@@ -13,7 +13,11 @@
 class ChatServer;
 
 /* room to which all users are automatically joined */
-const std::string DEFAULT_ROOM = "Main";
+const std::string DEFAULT_ROOM = "RV Chat";
+
+/* character codes indicating moderators and the number thereof */
+const char MOD_LEVELS[] = { 'A', 'C', 'b', 'f', 'c' };
+const unsigned NUM_MOD_LEVELS = sizeof(MOD_LEVELS)/sizeof(MOD_LEVELS[0]);
 
 class User
 {
@@ -23,19 +27,19 @@ public:
 
 	int GetSocket() const	{ return m_iSocket; }
 
-	/* get away/muted/logged in */
-	bool IsMod() const	{ return m_bIsMod; }
 	bool IsAway() const	{ return m_bAway; }
 	bool IsMuted() const	{ return m_bMuted; }
 	bool IsLoggedIn() const	{ return m_bLoggedIn; }
 
-	/* set idle/away/muted/logged in */
-	void SetIsMod( bool b )		{ m_bIsMod = b; }
 	void SetAway( bool b )		{ m_bAway = b; }
 	void SetMuted( bool b )		{ m_bMuted = b; }
 	void SetLoggedIn( bool b )	{ m_bLoggedIn = b; }
 
-	/* get name/away/room */
+	char GetLevel() const	{ return m_cLevel; }
+	void SetLevel( char c )	{ m_cLevel = c; }
+	bool IsMod() const;
+
+	/* get name/away/room/prefs */
 	const std::string& GetName() const	{ return m_sName; }
 	const std::string& GetMessage() const	{ return m_sMessage; }
 	const std::string& GetRoom() const	{ return m_sRoom; }
@@ -76,8 +80,9 @@ private:
 	std::string m_sRoom;
 	std::string m_sPrefs;
 
+	char m_cLevel;
+
 	bool m_bLoggedIn;
-	bool m_bIsMod;
 	bool m_bMuted;
 
 	// m_LastIdleBroadcast = time that idle status was last broadcast

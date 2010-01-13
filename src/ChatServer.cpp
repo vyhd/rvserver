@@ -1,8 +1,9 @@
 #include <cerrno>
+#include <cctype>
 #include <cstdlib>
 #include <cstring>	// for memset, strcasecmp
 #include <vector>	// for PacketUtil::Split
-#include <algorithm>	// for find()
+#include <algorithm>	// for find(), transform()
 
 #include <unistd.h>
 #include <signal.h>
@@ -24,24 +25,30 @@ const unsigned SLEEP_MICROSECONDS = 1000*150;
 const int SERVER_PORT = 7005;
 
 /* number of seconds to full user idle status */
-const unsigned MINUTES_TO_IDLE = 2;
+const unsigned MINUTES_TO_IDLE = 5;
 
 /* number of seconds to idle kick */
 const unsigned MINUTES_TO_IDLE_KICK = 90;
 
 ChatServer* g_pServer = NULL;
 
+/* statistics */
+unsigned g_iBytesSent = 0;
+unsigned g_iBytesRead = 0;
+unsigned g_iBytesBroadcast = 0;
+
 /* On caught signal, add a message and flush logs before exiting. */
 void sig_handler( int signum )
 {
 	Logger::SystemLog( "Caught code %d (%s): exiting.", signum, strsignal(signum) );
+	Logger::SystemLog( "%u bytes sent, %u bytes received, %u bytes broadcast", g_iBytesSent, g_iBytesRead, g_iBytesBroadcast );
 
 	if( g_pServer )
 	{
-		ChatPacket msg( WALL_MESSAGE, BLANK, "AAAA! EL SERVIDOR ESTA TERMINANDO! VAMOS A MORIR EN 5 SEGUNDOS!" );
-		g_pServer->Broadcast( &msg );
+//		ChatPacket msg( WALL_MESSAGE, BLANK, "AAAA! EL SERVIDOR ESTA TERMINANDO! VAMOS A MORIR EN 5 SEGUNDOS!" );
+//		g_pServer->Broadcast( &msg );
 
-		sleep( 5 );
+//		sleep( 5 );
 
 		// cleanly remove all users
 		set<User*>::const_iterator it = g_pServer->GetUserList()->begin();
@@ -280,12 +287,22 @@ User* ChatServer::GetUserByName( const std::string &sName ) const
 	return NULL;
 }
 
-bool ChatServer::RoomExists( const std::string &sRoom ) const
+bool ChatServer::RoomExists( const std::string &sRoom_ ) const
 {
-	list<string>::const_iterator it = find( m_Rooms.begin(), m_Rooms.end(), sRoom );
+	// do a case insensitive match by comparing entirely in lowercase
+	std::string sRoom( sRoom_ );
+	transform( sRoom.begin(), sRoom.end(), sRoom.begin(), tolower );
 
-	// if we have an iterator, then the room is in the list
-	return (it != m_Rooms.end());
+	for( list<string>::const_iterator it = m_Rooms.begin(); it != m_Rooms.end(); it++ )
+	{
+		std::string sCurRoom( *it );
+		transform( sCurRoom.begin(), sCurRoom.end(), sCurRoom.begin(), tolower );
+
+		if( sCurRoom.compare(sRoom) == 0 )
+			return true;
+	}
+
+	return false;
 }
 
 void ChatServer::AddRoom( const std::string &sRoom )
@@ -346,26 +363,25 @@ std::string ChatServer::GetUserState( const User *user ) const
 	std::string ret( user->GetRoom() );
 	ret.push_back( '|' );
 
-	// display user level. TODO: user level.
-	if( user->IsMod() )
-		ret.push_back( 'c' );
-	else
-		ret.push_back( '_' );
+	// display user level.
+	ret.push_back( user->GetLevel() );
 
 	// display muted status (M for muted, _ for not)
 	ret.push_back( user->IsMuted() ? 'M' : '_' );
 
 	// display idle status, including time if needed
 	if( IsIdle(user) )
-		ret.push_back( 'i' );
-	else
-		ret.push_back( '_' );
-
-	if( IsIdle(user) )
 	{
+		ret.push_back( 'i' );
+
+		// print idle time in 4 digits for the client
 		char sIdleTime[5];
 		snprintf( sIdleTime, 5, "%04u", user->GetIdleMinutes() );
 		ret.append( sIdleTime );
+	}
+	else
+	{
+		ret.push_back( '_' );
 	}
 
 	// display away status, appending the message if away
@@ -393,6 +409,8 @@ int ChatServer::Read( char *buffer, unsigned len, User *user )
 		return -1;
 	}
 
+	g_iBytesRead += iRead;
+
 	return iRead;
 }
 
@@ -411,6 +429,8 @@ int ChatServer::Write( const std::string &str, User *user )
 		return -1;
 	}
 
+	g_iBytesSent += iSent;
+
 	return iSent;
 }
 
@@ -419,8 +439,6 @@ void ChatServer::Broadcast( const ChatPacket *packet, const std::string *sRoom )
 	// optimization: instead of using Send(), cache the packet string and
 	// Write(). we only need ToString (which is expensive) once this way.
 	const std::string sPacketData = packet->ToString();
-
-	Logger::SystemLog( "Broadcasting \"%s\"", sPacketData.c_str() );
 
 	// if no room is given, or this user is in the room, send it!
 	for( set<User*>::const_iterator it = m_Users.begin(); it != m_Users.end(); it++ )
@@ -431,7 +449,10 @@ void ChatServer::Broadcast( const ChatPacket *packet, const std::string *sRoom )
 
 		// no given room is a sentinel for all rooms
 		if( !sRoom || (*it)->IsInRoom(*sRoom) )
+		{
 			Write( sPacketData, (*it) );
+			g_iBytesBroadcast += sPacketData.length();
+		}
 	}
 }
 

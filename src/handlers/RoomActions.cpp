@@ -40,7 +40,15 @@ bool HandleCreate( ChatServer *server, User *user, const ChatPacket *packet )
 
 	if( server->RoomExists(sRoom) )
 	{
-		ChatPacket msg( WALL_MESSAGE, "_", "That room already exists!" );
+		ChatPacket msg( WALL_MESSAGE, BLANK, "That room already exists!" );
+		server->Send( &msg, user );
+		return false;
+	}
+
+	// length check, since really long names make the client freak out
+	if( sRoom.length() > 16 )
+	{
+		ChatPacket msg( WALL_MESSAGE, BLANK, "Room names are limited to 16 characters." );
 		server->Send( &msg, user );
 		return false;
 	}
@@ -73,8 +81,8 @@ bool HandleDestroy( ChatServer *server, User *user, const ChatPacket *packet )
 	// consequences shall be dire!
 	if( sRoom.compare(DEFAULT_ROOM) == 0 )
 	{
-		const std::string HAL = "[Server] I'm afraid I can't let you do that, " + user->GetName();
-		ChatPacket msg( WALL_MESSAGE, "_", HAL );
+		const std::string HAL = "[Server] I'm afraid I can't let you do that, " + user->GetName() + ".";
+		ChatPacket msg( WALL_MESSAGE, BLANK, HAL );
 		server->Broadcast( &msg );
 		server->Condemn( user );
 		return true;
