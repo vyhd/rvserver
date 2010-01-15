@@ -9,15 +9,17 @@
  * We'll hopefully have replaced it by then, don't you think? */
 #include <ctime>
 #include <string>
+#include "network/Socket.h"
 
-class ChatServer;
-
-/* room to which all users are automatically joined */
-const std::string DEFAULT_ROOM = "RV Chat";
+class Room;
 
 /* character codes indicating moderators and the number thereof */
-const char MOD_LEVELS[] = { 'A', 'C', 'b', 'f', 'c' };
+const char MOD_LEVELS[] = { 'A', 'C', 'b', 'f', 'c', '!' };
 const unsigned NUM_MOD_LEVELS = sizeof(MOD_LEVELS)/sizeof(MOD_LEVELS[0]);
+
+/* idle time limits */
+const unsigned MINUTES_TO_IDLE = 5;
+const unsigned MINUTES_TO_IDLE_KICK = 90;
 
 class User
 {
@@ -25,7 +27,19 @@ public:
 	User( unsigned iSocket );
 	~User();
 
-	int GetSocket() const	{ return m_iSocket; }
+	// one part convenience, one part error detection
+	int Write( const std::string &str );
+	int Read( char *buffer, unsigned len );
+	const char* GetIP() const	{ return m_Socket.GetIP(); }
+
+	// if this is true, the socket closed due to bad communication.
+	// we'll reap the user after the main update loop is done.
+	bool IsDead() const	{ return !m_Socket.IsOpen(); }
+
+	// force the user to quit, e.g. failed validation or kicked
+	void Kill()		{ m_Socket.Close(); }
+
+	/* set/get user properties */
 
 	bool IsAway() const	{ return m_bAway; }
 	bool IsMuted() const	{ return m_bMuted; }
@@ -39,37 +53,35 @@ public:
 	void SetLevel( char c )	{ m_cLevel = c; }
 	bool IsMod() const;
 
+	Room* GetRoom() const	{ return m_pRoom; }
+	void SetRoom( Room* p )	{ m_pRoom = p; }
+
 	/* get name/away/room/prefs */
 	const std::string& GetName() const	{ return m_sName; }
 	const std::string& GetMessage() const	{ return m_sMessage; }
-	const std::string& GetRoom() const	{ return m_sRoom; }
 	const std::string& GetPrefs() const	{ return m_sPrefs; }
 
 	/* set name/away/room */
 	void SetName( const std::string &str )	{ m_sName.assign( str ); }
 	void SetMessage(const std::string &str)	{ m_sMessage.assign( str ); }
-	void SetRoom( const std::string &str )	{ m_sRoom.assign( str ); }
 	void SetPrefs( const std::string &str )	{ m_sPrefs.assign( str ); }
 
 	/* get idle status and time from last message */
 	unsigned GetIdleSeconds() const;
 	unsigned GetIdleMinutes() const	{ return GetIdleSeconds() / 60; }
 
-	/* keep the time of the last idle broadcast and let the server
-	 * figure out exactly how it wants to handle idle users. */
-	/* XXX: this is kind of ugly. can we do better than this somehow? */
-	unsigned GetIdleBroadcastSeconds() const;
-	void UpdateIdleBroadcast()	{ m_LastIdleBroadcast = time(NULL); }
-
-	/* convenience function */
-	bool IsInRoom( const std::string &str ) const	{ return m_sRoom.compare(str) == 0; }
+	bool IsIdle() const { return GetIdleMinutes() >= 5; }
+	
 
 	/* resets idle/away statuses and the last message timer */
 	void PacketSent();
 
 private:
 	/* Socket descriptor for this user's connection */
-	unsigned m_iSocket;
+	Socket m_Socket;
+
+	/* Room this user is suscribed to */
+	Room *m_pRoom;
 
 	/* away status and message, if applicable */
 	bool m_bAway;
@@ -77,7 +89,6 @@ private:
 
 	/* basic user details */
 	std::string m_sName;
-	std::string m_sRoom;
 	std::string m_sPrefs;
 
 	char m_cLevel;
@@ -85,8 +96,7 @@ private:
 	bool m_bLoggedIn;
 	bool m_bMuted;
 
-	// m_LastIdleBroadcast = time that idle status was last broadcast
-	time_t m_LastMessage, m_LastIdleBroadcast;
+	time_t m_LastActive;
 };
 
 #endif // USER_H

@@ -1,9 +1,8 @@
-/* SocketListener: Listens for incoming Connections and (will) pass them to a connection handler. */
+/* SocketListener: Listens for incoming connections and passes them to an
+ * external handler (with the GetConnection() call) for processing. */
 
 #ifndef SOCKETLISTENER_H
 #define SOCKETLISTENER_H
-
-#include <arpa/inet.h>
 
 class ChatServer;
 

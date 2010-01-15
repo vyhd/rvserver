@@ -1,4 +1,5 @@
 #include "packet/PacketHandler.h"
+#include "model/Room.h"
 
 namespace RoomMessage
 {
@@ -10,17 +11,16 @@ REGISTER_HANDLER( ROOM_MESSAGE, RoomMessage );
 bool RoomMessage::HandlePacket( ChatServer *server, User *user, const ChatPacket *packet )
 {
 	// handled, but ignored
-	if( !user->IsLoggedIn() ||  user->IsMuted() )
+	if( !user->IsLoggedIn() || user->IsMuted() )
 		return false;
 
-	// create a packet for broadcast, including text and RGB
+	// create a packet for broadcast, copying message and RGB
 	ChatPacket msg( *packet );
 
 	// set the first param to the user's name
 	msg.sUsername.assign( user->GetName() );
 
-	// broadcast the packet to the user's room
-	server->Broadcast( &msg, &user->GetRoom() );
+	user->GetRoom()->Broadcast( &msg );
 
 	return true;
 }

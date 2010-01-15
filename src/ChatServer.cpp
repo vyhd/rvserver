@@ -3,7 +3,6 @@
 #include <cstdlib>
 #include <cstring>	// for memset, strcasecmp
 #include <vector>	// for PacketUtil::Split
-#include <algorithm>	// for find(), transform()
 
 #include <unistd.h>
 #include <signal.h>
@@ -12,6 +11,7 @@
 #include "ChatServer.h"
 #include "logger/Logger.h"
 #include "model/User.h"
+#include "network/DatabaseConnector.h"
 #include "packet/ChatPacket.h"
 #include "packet/PacketUtil.h"
 #include "packet/PacketHandler.h"
@@ -51,12 +51,12 @@ void sig_handler( int signum )
 //		sleep( 5 );
 
 		// cleanly remove all users
-		set<User*>::const_iterator it = g_pServer->GetUserList()->begin();
+		list<User*>::const_iterator it = g_pServer->GetUserList()->begin();
 
 		for( ; it != g_pServer->GetUserList()->end(); it++ )
 		{
 			ChatPacket kill( USER_PART, (*it)->GetName(), "_" );
-			g_pServer->Broadcast( &kill );
+			g_pServer->Broadcast( kill );
 		}
 	}
 
@@ -70,8 +70,14 @@ ChatServer::ChatServer()
 	m_pListener = new SocketListener;
 	m_pListener->Connect( SERVER_PORT );
 
-	m_Rooms.push_back( DEFAULT_ROOM );
-	m_Rooms.push_back( "Spam Room" );
+	// TODO: softcode this!
+	m_pConnector = new DatabaseConnector( "www.runevillage.com",
+		"/ThePub/authenticate.php", "/ThePub/chatconfig.php" );
+
+	if( !m_pConnector->Connect() )
+		Logger::SystemLog( "Login connection failed!" );
+
+	m_Rooms.AddRoom( "Spam Room" );
 }
 
 ChatServer::~ChatServer()
@@ -85,28 +91,25 @@ void ChatServer::AddUser( unsigned iSocket )
 	User *pUser = new User( iSocket );
 	m_Users.insert( pUser );
 
-	Logger::SystemLog( "Added new client on socket %d, from IP %s", iSocket, GetUserIP(pUser) );
+	Logger::SystemLog( "Added new client on socket %d, from IP %s", iSocket, pUser->GetIP() );
 }
 
 void ChatServer::RemoveUser( User *user )
 {
-	const int iSocket = user->GetSocket();
-
-	Logger::SystemLog( "Client (%p) on socket %d, IP %s removed.", user, iSocket, GetUserIP(user) );
-
-	shutdown( iSocket, SHUT_RDWR );
-	close( iSocket );
+	Logger::SystemLog( "Client (%p) at IP %s removed.", user, user->GetIP() );
 
 	// broadcast a quitting message if they were logged in
 	if( user->IsLoggedIn() )
 	{
 		user->SetLoggedIn( false );
-		ChatPacket msg( USER_PART, user->GetName(), BLANK );
-		Broadcast( &msg );
+		Broadcast( ChatPacket(USER_PART, user->GetName(), BLANK) );
 	}
 
+	// take this user out of the RoomList
+	m_Rooms.RemoveUser( user );
+
 	// take this user out of the update loop
-	m_Users.erase( user );
+	m_Users.remove( user );
 
 	delete user;
 }
@@ -164,7 +167,7 @@ void ChatServer::UpdateUser( User *user )
 	memset( m_sReadBuffer, 0, BUFFER_SIZE );
 
 	// no new data to operate on, or an error occurred
-	if( Read(m_sReadBuffer, BUFFER_SIZE, user) == -1 )
+	if( user->Read(m_sReadBuffer, BUFFER_SIZE) == -1 )
 		return;
 
 	// the vast majority of cases won't need split, so we
@@ -192,7 +195,7 @@ void ChatServer::HandleUserPacket( User *user, const std::string &buf )
 	// create user-specific log prefix, e.g. "Fire_Adept@127.0.0.1"
 	string sUserPrefix( user->GetName() );
 	sUserPrefix.push_back( '@' );
-	sUserPrefix.append( GetUserIP(user) );
+	sUserPrefix.append( user->GetIP() );
 
 	// try to make a packet out of the data we've gotten
 	ChatPacket packet( buf );
@@ -201,18 +204,19 @@ void ChatServer::HandleUserPacket( User *user, const std::string &buf )
 	if( !packet.IsValid() )
 	{
 		Logger::SystemLog( "invalid packet from %s! %s", sUserPrefix.c_str(), buf.c_str() );
-		Condemn( user );
+		user->Kill();
 		return;
 	}
 
 	// broadcast a returned message if the user was idle or away before.
 	// don't broadcast if the user just changed their away message, though.
+#if 0
 	if( user->IsLoggedIn() && ( IsIdle(user) ||
 		(user->IsAway() && packet.iCode != CLIENT_AWAY)) )
 	{
-		ChatPacket msg( CLIENT_BACK, user->GetName(), BLANK );
-		Broadcast( &msg );
+		Broadcast( ChatPacket(CLIENT_BACK, user->GetName(), BLANK) );
 	}
+#endif
 
 	// update idle/away and last message timestamp
 	user->PacketSent();
@@ -251,9 +255,8 @@ void ChatServer::CheckIdleStatus( User *user )
 	// if the user is above our kick threshold, give 'em the boot
 	if( iIdleMinutes >= MINUTES_TO_IDLE_KICK )
 	{
-		ChatPacket kick( IDLE_KICK );
-		Send( &kick, user );
-		Condemn( user );
+		user->Write( ChatPacket(IDLE_KICK).ToString() );
+		user->Kill();
 		return;
 	}
 
@@ -262,10 +265,8 @@ void ChatServer::CheckIdleStatus( User *user )
 		return;
 
 	// print the idle time into a string, broadcast it
-	char sIdleTime[5];
-	snprintf( sIdleTime, 5, "%04u", iIdleMinutes );
-	ChatPacket idle( CLIENT_IDLE, user->GetName(), sIdleTime );
-	Broadcast( &idle );
+	string sIdleTime = StringUtil::Format( "%04u", iIdleMinutes );
+	Broadcast( ChatPacket(CLIENT_IDLE, user->GetNAme(), sIdleTime) );
 
 	// update the user's last idle broadcast timestamp
 	user->UpdateIdleBroadcast();
@@ -278,89 +279,18 @@ bool ChatServer::IsIdle( const User *user ) const
 
 User* ChatServer::GetUserByName( const std::string &sName ) const
 {
-	/* XXX: can we do better than a linear search? */
-	for( set<User*>::iterator it = m_Users.begin(); it != m_Users.end(); it++ )
-		if( strcasecmp((*it)->GetName().c_str(), sName.c_str()) == 0 )
+	for( list<User*>::iterator it = m_Users.begin(); it != m_Users.end(); it++ )
+		if( !StringUtil::CompareNoCase((*it)->GetName(), sName) )
 			return (*it);
 
 	// no match found
 	return NULL;
 }
 
-bool ChatServer::RoomExists( const std::string &sRoom_ ) const
-{
-	// do a case insensitive match by comparing entirely in lowercase
-	std::string sRoom( sRoom_ );
-	transform( sRoom.begin(), sRoom.end(), sRoom.begin(), tolower );
-
-	for( list<string>::const_iterator it = m_Rooms.begin(); it != m_Rooms.end(); it++ )
-	{
-		std::string sCurRoom( *it );
-		transform( sCurRoom.begin(), sCurRoom.end(), sCurRoom.begin(), tolower );
-
-		if( sCurRoom.compare(sRoom) == 0 )
-			return true;
-	}
-
-	return false;
-}
-
-void ChatServer::AddRoom( const std::string &sRoom )
-{
-	// don't allow duplicates
-	if( RoomExists(sRoom) )
-		return;
-
-	m_Rooms.push_back( sRoom );
-}
-
-void ChatServer::RemoveRoom( const std::string &sRoom )
-{
-	// don't remove rooms that don't exist
-	if( !RoomExists(sRoom) )
-		return;
-
-	if( sRoom.compare(DEFAULT_ROOM) == 0 )
-	{
-		Logger::SystemLog( "Someone tried to /destroy Main! Ignoring..." );
-		return;
-	}
-
-	// find the room in the room list and remove it
-	m_Rooms.remove( sRoom );
-
-	// remove all users who were in this room and boot them back to Main
-	for( set<User*>::iterator it = m_Users.begin(); it != m_Users.end(); it++ )
-	{
-		User *user = *it;
-
-		if( user->IsInRoom(sRoom) )
-		{
-			user->SetRoom( DEFAULT_ROOM );
-
-			ChatPacket msg( JOIN_ROOM, user->GetName(), DEFAULT_ROOM );
-			Broadcast( &msg );
-		}
-	}
-}
-
-/* helper function to get an IP address from a user */
-const char* ChatServer::GetUserIP( const User *user ) const
-{
-	struct sockaddr_in ClientData;
-	socklen_t ClientLength = sizeof( ClientData );
-
-	// if the socket has been disconnected already by the OS, we
-	// aren't gonna get the IP (which sucks a bit).
-	if( getpeername(user->GetSocket(), (sockaddr *)&ClientData, &ClientLength) < 0 )
-		return "<nil>";
-
-	return inet_ntoa(ClientData.sin_addr);
-}
-
 std::string ChatServer::GetUserState( const User *user ) const
 {
-	std::string ret( user->GetRoom() );
+	std::string ret;
+	ret.assign( m_Rooms.GetName(user->GetRoom()) );
 	ret.push_back( '|' );
 
 	// display user level.
@@ -392,90 +322,37 @@ std::string ChatServer::GetUserState( const User *user ) const
 	return ret;
 }
 
-int ChatServer::Read( char *buffer, unsigned len, User *user )
-{
-	int iRead = recv( user->GetSocket(), buffer, len, MSG_DONTWAIT );
-
-	if( iRead <= 0 )
-	{
-		// not ready for reading: ignore.
-		if( errno == EWOULDBLOCK || errno == EAGAIN )
-			return -1;
-
-		// encounted an unknown error. log it and drop the client.
-		Logger::SystemLog( "Error %i reading data from %u: %s", errno, user->GetSocket(), strerror(errno) );
-		Condemn( user );
-
-		return -1;
-	}
-
-	g_iBytesRead += iRead;
-
-	return iRead;
-}
-
-int ChatServer::Write( const std::string &str, User *user )
-{
-	// HACK: append a newline to all given lines to write
-	const std::string sMessage = str + "\n";
-
-	int iSent = send( user->GetSocket(), sMessage.c_str(), sMessage.size(), MSG_DONTWAIT );
-
-	if( iSent <= 0 )
-	{
-		Logger::SystemLog( "Error sending line to IP %s: %s", GetUserIP(user), strerror(errno) );
-		Condemn( user );
-
-		return -1;
-	}
-
-	g_iBytesSent += iSent;
-
-	return iSent;
-}
-
-void ChatServer::Broadcast( const ChatPacket *packet, const std::string *sRoom )
+void ChatServer::Broadcast( const ChatPacket &packet )
 {
 	// optimization: instead of using Send(), cache the packet string and
 	// Write(). we only need ToString (which is expensive) once this way.
-	const std::string sPacketData = packet->ToString();
+	const std::string sPacketData = packet.ToString();
 
-	// if no room is given, or this user is in the room, send it!
-	for( set<User*>::const_iterator it = m_Users.begin(); it != m_Users.end(); it++ )
+	// send to every single user on the server
+	for( list<User*>::const_iterator it = m_Users.begin(); it != m_Users.end(); it++ )
 	{
+		const User *user = (*it);
+
 		// don't bother broadcasting to users who won't see it
-		if( !(*it)->IsLoggedIn() )
+		if( !user->IsLoggedIn() )
 			continue;
 
-		// no given room is a sentinel for all rooms
-		if( !sRoom || (*it)->IsInRoom(*sRoom) )
-		{
-			Write( sPacketData, (*it) );
-			g_iBytesBroadcast += sPacketData.length();
-		}
+		user->Write( sPacketData );
+		g_iBytesBroadcast += sPacketData.length();
 	}
-}
-
-void ChatServer::Send( const ChatPacket *packet, User *user )
-{
-	Write( packet->ToString(), user );
-}
-
-void ChatServer::Send( const std::string &str, User *user )
-{
-	Write( str, user );
 }
 
 void ChatServer::WallMessage( const std::string &sMessage )
 {
 	const std::string sPacket = ChatPacket(WALL_MESSAGE, BLANK, sMessage).ToString();
 
-	for( set<User*>::const_iterator it = m_Users.begin(); it != m_Users.end(); it++ )
+	for( list<User*>::const_iterator it = m_Users.begin(); it != m_Users.end(); it++ )
 	{
-		if( !(*it)->IsMod() )
+		const User *user = (*it);
+		if( !user->IsMod() )
 			continue;
 
-		Send( sPacket, *it );
+		user->Write( sPacket );
 	}
 }
 

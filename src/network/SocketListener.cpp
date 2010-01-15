@@ -7,17 +7,15 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
-#include <unistd.h>	// for usleep()
+#include <unistd.h>	// for close()
 #include <fcntl.h>	// for fcntl()
 
 #include "network/SocketListener.h"
 #include "logger/Logger.h"
 
-// 1000 microseconds per millisecond, 50 ms
-const int UPDATE_SLEEP_MICROSECONDS = 1000*50;
-
 SocketListener::SocketListener()
 {
+	// this space left blank
 }
 
 SocketListener::~SocketListener()

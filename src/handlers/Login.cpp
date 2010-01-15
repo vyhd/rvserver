@@ -1,4 +1,7 @@
 #include "packet/PacketHandler.h"
+#include "network/DatabaseConnector.h"
+#include "model/RoomList.h"
+#include "model/Room.h"
 #include "logger/Logger.h"
 #include "verinfo.h"
 #include <cstdlib>
@@ -24,48 +27,43 @@ bool Login::HandlePacket( ChatServer *server, User* const user, const ChatPacket
 		// work around it until we get a proper solution (keepalive?) in place.
 		User *other = server->GetUserByName(packet->sUsername);
 
-		std::string sTheirIP( server->GetUserIP(other) );
-
-		if( sTheirIP.compare(server->GetUserIP(user)) != 0 )
-		{
-			ChatPacket response( ACCESS_DENIED );
-			server->Send( &response, user );
-			server->Condemn( user );
-			return true;
-		}
-		else
-		{
-			// you...you DOUBLE HACK: change the other user
-			// name so it won't kill us when we log in.
-			other->SetName( other->GetName() + " (dead)" );
-			server->Condemn( other );
-		}
+		// you...you DOUBLE HACK: change the other user
+		// name so it won't kill us when we log in.
+		other->SetName( other->GetName() + " (dead)" );
+		other->Kill();
 	}
 
 	// set the user's name from the login packet
 	user->SetName( packet->sUsername );
 
+	// attempt to verify against the database
+	DatabaseConnector *conn = server->GetConnection();
+	LoginResult result = conn->Login( packet->sUsername, packet->sMessage, user );
+
+	MessageCode code = ACCESS_DENIED;
+
+	// set the response packet based on our response
+	switch( result )
+	{
+		case LOGIN_SUCCESS:		code = ACCESS_GRANTED; break;
+		case LOGIN_ERROR:		code = ACCESS_DENIED; break;
+		case LOGIN_ERROR_ATTEMPTS:	code = LIMIT_REACHED; break;
+		case LOGIN_SERVER_DOWN:		code = SERVER_DOWN; break;
+	}
+
 	// create and send a response packet.
-	ChatPacket response( ACCESS_GRANTED );
-	server->Send( &response, user );
+	ChatPacket response( code );
+	user->Write( response.ToString() );
 
+	// if the client can't verify, disconnect them
+	if( code != ACCESS_GRANTED )
+	{
+		user->Kill();
+		return true;
+	}
+
+	server->GetRoomList()->GetDefaultRoom()->AddUser( user );
 	user->SetLoggedIn( true );
-
-	// temporary testing code
-	if( packet->sMessage.compare("gimmemod") == 0 )
-	{
-		char code = MOD_LEVELS[rand() % NUM_MOD_LEVELS];
-		user->SetLevel( code );
-	}
-	else
-	{
-		const char USER_LEVELS[] = { 'B', 'F', '!' };
-		char code = USER_LEVELS[rand() % 3];
-		user->SetLevel( code );
-	}
-
-	if( !packet->sUsername.compare("Sammy") )
-		user->SetLevel( 'C' );
 
 	// send the new guy a nice little message about the server version
 	char buffer[128];

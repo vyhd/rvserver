@@ -1,4 +1,6 @@
 #include "packet/PacketHandler.h"
+#include "model/Room.h"
+#include "model/RoomList.h"
 
 bool HandleJoin( ChatServer *server, User *user, const ChatPacket *packet );
 bool HandleCreate( ChatServer *server, User *user, const ChatPacket *packet );
@@ -12,17 +14,19 @@ REGISTER_HANDLER_FN( FORCE_JOIN, HandleForceJoin );
 
 bool HandleJoin( ChatServer *server, User *user, const ChatPacket *packet )
 {
+	RoomList *list = server->GetRoomList();
 	const std::string &sRoom = packet->sMessage;
+	Room *room = list->GetRoom( sRoom );
 
 	// doesn't exist, so can't join
-	if( !server->RoomExists(sRoom) )
+	if( room == NULL )
 		return false;
 
 	// already here
-	if( user->IsInRoom(sRoom) )
+	if( room->HasUser(user) )
 		return false;
 
-	user->SetRoom( sRoom );
+	room->AddUser( user );
 
 	// broadcast the new room join
 	ChatPacket msg( JOIN_ROOM, user->GetName(), sRoom );
@@ -37,11 +41,13 @@ bool HandleCreate( ChatServer *server, User *user, const ChatPacket *packet )
 		return false;
 
 	const std::string &sRoom = packet->sMessage;
+	RoomList *list = server->GetRoomList();
+	Room *room = list->GetRoom( sRoom );
 
-	if( server->RoomExists(sRoom) )
+	if( room != NULL )
 	{
 		ChatPacket msg( WALL_MESSAGE, BLANK, "That room already exists!" );
-		server->Send( &msg, user );
+		user->GetSocket()->Write( msg.ToString() );
 		return false;
 	}
 
@@ -49,18 +55,20 @@ bool HandleCreate( ChatServer *server, User *user, const ChatPacket *packet )
 	if( sRoom.length() > 16 )
 	{
 		ChatPacket msg( WALL_MESSAGE, BLANK, "Room names are limited to 16 characters." );
-		server->Send( &msg, user );
+		user->GetSocket()->Write( msg.ToString() );
 		return false;
 	}
 
-	server->AddRoom( sRoom );
-	user->SetRoom( sRoom );
+	list->AddRoom( sRoom );
 
 	// broadcast the creation of the room
 	{
 		ChatPacket msg( CREATE_ROOM, BLANK, sRoom );
 		server->Broadcast( &msg );
 	}
+
+	// this should never fail - we just added it
+	room->AddUser( user );
 
 	// broadcast the new room join
 	{
@@ -88,7 +96,7 @@ bool HandleDestroy( ChatServer *server, User *user, const ChatPacket *packet )
 		return true;
 	}
 
-	server->RemoveRoom( sRoom );
+	server->GetRoomList()->RemoveRoom( sRoom );
 
 	// broadcast the room's destrucity
 	ChatPacket msg( DESTROY_ROOM, BLANK, sRoom );
@@ -103,9 +111,11 @@ bool HandleForceJoin( ChatServer *server, User *user, const ChatPacket *packet )
 		return false;
 
 	const std::string& sRoom = packet->sMessage;
+	RoomList *list = server->GetRoomList();
+	Room *room = list->GetRoom( sRoom );
 
 	// doesn't exist, don't let mods send users into oblivion
-	if( !server->RoomExists(sRoom) )
+	if( room == NULL )
 		return false;
 
 	User *target = server->GetUserByName( packet->sUsername );
@@ -114,7 +124,7 @@ bool HandleForceJoin( ChatServer *server, User *user, const ChatPacket *packet )
 	if( target == NULL )
 		return false;
 
-	target->SetRoom( sRoom );
+	room->AddUser( target );
 
 	// broadcast the new room join
 	ChatPacket msg( JOIN_ROOM, target->GetName(), sRoom );

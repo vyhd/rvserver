@@ -2,6 +2,7 @@
  * we can stuff most of them into one file and share routines to save code. */
 
 #include "packet/PacketHandler.h"
+#include "model/Room.h"
 
 bool HandleKick( ChatServer *server, User *user, const ChatPacket *packet );
 bool HandleDisable( ChatServer *server, User *user, const ChatPacket *packet );
@@ -67,7 +68,7 @@ bool HandleRemoveAction( ChatServer *server, User *user, const ChatPacket *packe
 	if( target != NULL )
 	{
 		ChatPacket notify( packet->iCode );
-		server->Send( &notify, target );
+		target->GetSocket()->Write( notify.ToString() );
 		server->Condemn( target );
 	}
 
@@ -138,8 +139,8 @@ bool HandleQuery( ChatServer *server, User *user, const ChatPacket *packet )
 		return false;
 
 	// send a packet back to the caller giving the IP address
-	ChatPacket query( IP_QUERY, target->GetName(), server->GetUserIP(target) );
-	server->Send( &query, user );
+	ChatPacket query( IP_QUERY, target->GetName(), user->GetIP() );
+	user->GetSocket()->Write( query.ToString() );
 
 	/* send a global message about this action */
 	std::string sMessage = target->GetName() + " was " +
@@ -152,11 +153,12 @@ bool HandleQuery( ChatServer *server, User *user, const ChatPacket *packet )
 
 bool HandleClear( ChatServer *server, User *user, const ChatPacket *packet )
 {
-	if( !user->IsMod() )
+	if( !user->IsMod() || !user->GetRoom() )
 		return false;
 
 	// broadcast a message to clients so they blank their screens
 	ChatPacket msg( FORCE_CLEAR, user->GetName(), BLANK );
-	server->Broadcast( &msg );
+	user->GetRoom()->Broadcast( &msg );
+
 	return true;
 }

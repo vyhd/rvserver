@@ -17,7 +17,7 @@ bool RoomAction::HandlePacket( ChatServer *server, User *user, const ChatPacket 
 	ChatPacket msg( packet->iCode, user->GetName(), packet->sMessage );
 
 	// broadcast the packet to the user's room
-	server->Broadcast( &msg, &user->GetRoom() );
+	server->Broadcast( &msg );
 
 	return true;
 }

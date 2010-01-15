@@ -21,13 +21,10 @@ bool PrivateMessage::HandlePacket( ChatServer *server, User *user, const ChatPac
 		return false;
 
 	// copy the packet code and message
-	ChatPacket msg( *packet );
+	ChatPacket msg( USER_PM, user->GetName(), packet->sMessage );
 
-	// set the first param to this user's name
-	msg.sUsername.assign( user->GetName() );
-
-	// send the packet off to the target
-	server->Send( &msg, recipient );
+	// send this packet to the recipient
+	recipient->GetSocket()->Write( msg.ToString() );
 
 	return true;
 }

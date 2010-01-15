@@ -14,10 +14,13 @@ build_ver:
 	chmod +x gen-stub
 	./gen-stub
 
-Network = network/SocketListener.cpp network/SocketListener.h
-#network/MySQLConnector.cpp network/MySQLConnector.h
+Network = network/Socket.cpp network/Socket.h \
+	network/SocketListener.cpp network/SocketListener.h \
+	network/DatabaseConnector.cpp network/DatabaseConnector.h
 
-Model = model/User.cpp model/User.h
+Model = model/Room.cpp model/Room.h \
+	model/RoomList.cpp model/RoomList.h \
+	model/User.cpp model/User.h
 
 Logger = logger/Logger.cpp logger/Logger.h
 
@@ -25,6 +28,11 @@ Packet = packet/ChatPacket.cpp packet/ChatPacket.h \
 	packet/PacketHandler.cpp packet/PacketHandler.h \
 	packet/PacketUtil.cpp packet/PacketUtil.h \
 	packet/MessageCodes.h
+
+Util = util/libb64/cencode.c util/libb64/cencode.h \
+	util/Base64.cpp util/Base64.h \
+	util/StringUtil.cpp util/StringUtil.h \
+	util/URLEncoding.cpp util/URLEncoding.h
 
 Handlers = \
 	handlers/Action.cpp \
@@ -41,7 +49,5 @@ Handlers = \
 	handlers/Typing.cpp
 
 # Compile handlers last due to deps
-rvserver_SOURCES = $(Network) $(Model) $(Logger) $(Packet) \
+rvserver_SOURCES = $(Network) $(Model) $(Logger) $(Util) $(Packet) \
 	ChatServer.cpp ChatServer.h $(Handlers)
-
-#rvserver_LDFLAGS = -lmysqlpp

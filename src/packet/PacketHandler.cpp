@@ -11,10 +11,7 @@ bool PacketHandler::Handle( ChatServer *server, User *user, const ChatPacket *pa
 {
 	// if the user who sent this was away, send a notification
 	if( user->IsAway() )
-	{
-		ChatPacket notification( CLIENT_BACK, user->GetName(), "_" );
-		server->Broadcast( &notification );
-	}
+		server->Broadcast( ChatPacket(CLIENT_BACK, user->GetName(), BLANK) );
 
 	// remove away status and reset the idle timer.
 	// even if the packet isn't handled, it's still activity.

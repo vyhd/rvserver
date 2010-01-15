@@ -32,6 +32,7 @@ enum MessageCode
 	// login responses
 	ACCESS_GRANTED	= 100,
 	ACCESS_DENIED	= 101,
+	LIMIT_REACHED	= 102,
 
 	// ???
 	PM_BOX		= 200,
