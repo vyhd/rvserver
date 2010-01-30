@@ -27,10 +27,10 @@ bool Room::HasUser( User *user ) const
 	return m_Users.find(user) != m_Users.end();
 }
 
-void Room::Broadcast( const ChatPacket *packet )
+void Room::Broadcast( const ChatPacket &packet )
 {
 	// cache this: we only need to call it once
-	const string msg = packet->ToString();
+	const string msg = packet.ToString();
 
 	for( set<User*>::iterator it = m_Users.begin(); it != m_Users.end(); it++ )
 	{

@@ -15,6 +15,8 @@
 #include "packet/ChatPacket.h"
 #include "packet/PacketUtil.h"
 #include "packet/PacketHandler.h"
+#include "util/StringUtil.h"
+#include "verinfo.h"	// for BUILD_DATE, BUILD_VERSION
 
 using namespace std;
 
@@ -23,12 +25,6 @@ const unsigned SLEEP_MICROSECONDS = 1000*150;
 
 /* this is the server port unless otherwise set */
 const int SERVER_PORT = 7005;
-
-/* number of seconds to full user idle status */
-const unsigned MINUTES_TO_IDLE = 5;
-
-/* number of seconds to idle kick */
-const unsigned MINUTES_TO_IDLE_KICK = 90;
 
 ChatServer* g_pServer = NULL;
 
@@ -74,9 +70,7 @@ ChatServer::ChatServer()
 	m_pConnector = new DatabaseConnector( "www.runevillage.com",
 		"/ThePub/authenticate.php", "/ThePub/chatconfig.php" );
 
-	if( !m_pConnector->Connect() )
-		Logger::SystemLog( "Login connection failed!" );
-
+	// add additional rooms to the system
 	m_Rooms.AddRoom( "Spam Room" );
 }
 
@@ -89,7 +83,7 @@ ChatServer::~ChatServer()
 void ChatServer::AddUser( unsigned iSocket )
 {
 	User *pUser = new User( iSocket );
-	m_Users.insert( pUser );
+	m_Users.push_back( pUser );
 
 	Logger::SystemLog( "Added new client on socket %d, from IP %s", iSocket, pUser->GetIP() );
 }
@@ -108,16 +102,13 @@ void ChatServer::RemoveUser( User *user )
 	// take this user out of the RoomList
 	m_Rooms.RemoveUser( user );
 
-	// take this user out of the update loop
-	m_Users.remove( user );
-
 	delete user;
 }
 
 void ChatServer::MainLoop()
 {
 	struct timeval tv_start, tv_end;
-	while( 1 )
+	while( true )
 	{
 		gettimeofday( &tv_start, NULL );
 
@@ -130,22 +121,41 @@ void ChatServer::MainLoop()
 		}
 
 		// loop over all the clients and update them as needed
-		for( set<User*>::iterator it = m_Users.begin(); it != m_Users.end(); it++ )
-			UpdateUser( *it );
-
-		// disconnect and remove dead clients
-		if( !m_UsersToDelete.empty() )
+		for( list<User*>::iterator it = m_Users.begin(); it != m_Users.end(); it++ )
 		{
-			set<User*>::iterator it = m_UsersToDelete.begin();
-			for( ; it != m_UsersToDelete.end(); it++ )
-				RemoveUser( *it );
+			User *user = (*it);
 
-			m_UsersToDelete.clear();
+			// if the user isn't logged in, check login status
+			if( !user->IsLoggedIn() )
+			{
+				const LoginState state = user->GetLoginState();
+Logger::SystemLog( "State of %s: %i", user->GetName().c_str(), state );
+
+				// we aren't expecting data yet.
+				if( state == LOGIN_CHECKING )
+					return;
+
+				// if the user's login completed, check it.
+				if( state != LOGIN_NONE )
+					HandleLoginState( user );
+			}
+
+			// update this user (which means checking for and
+			// handling packets) regardless of login status.
+			UpdateUser( user );
+
+			// users can't be idle unless they're logged in...
+			if( user->IsLoggedIn() )
+				CheckIdleStatus( user );
+
+			// if this user is dead, erase/reposition the iterator
+			// and properly remove the user from their other stuff.
+			if( user->IsDead() )
+			{
+				it = m_Users.erase( it );
+				RemoveUser( user );
+			}
 		}
-
-		// send off any messages for users who are idle
-		for( set<User*>::iterator it = m_Users.begin(); it != m_Users.end(); it++ )
-			CheckIdleStatus( *it );
 
 		// flush all the logs to disk on update
 		Logger::Flush();
@@ -160,14 +170,18 @@ void ChatServer::MainLoop()
 		// give a bunch of time to other processes
 		usleep( SLEEP_MICROSECONDS );
 	}
+
+	Logger::SystemLog( "The impossible happened! :(" );
 }
 
 void ChatServer::UpdateUser( User *user )
 {
+	unsigned iPos = 0;
+
 	memset( m_sReadBuffer, 0, BUFFER_SIZE );
 
 	// no new data to operate on, or an error occurred
-	if( user->Read(m_sReadBuffer, BUFFER_SIZE) == -1 )
+	if( (iPos = user->Read(m_sReadBuffer, BUFFER_SIZE)) <= 0 )
 		return;
 
 	// the vast majority of cases won't need split, so we
@@ -193,9 +207,7 @@ void ChatServer::UpdateUser( User *user )
 void ChatServer::HandleUserPacket( User *user, const std::string &buf )
 {
 	// create user-specific log prefix, e.g. "Fire_Adept@127.0.0.1"
-	string sUserPrefix( user->GetName() );
-	sUserPrefix.push_back( '@' );
-	sUserPrefix.append( user->GetIP() );
+	string sUserPrefix = StringUtil::Format( "%s@%s", user->GetName().c_str(), user->GetIP() );
 
 	// try to make a packet out of the data we've gotten
 	ChatPacket packet( buf );
@@ -204,19 +216,14 @@ void ChatServer::HandleUserPacket( User *user, const std::string &buf )
 	if( !packet.IsValid() )
 	{
 		Logger::SystemLog( "invalid packet from %s! %s", sUserPrefix.c_str(), buf.c_str() );
+		Logger::SystemLog( "packet data: %s", buf.c_str() );
 		user->Kill();
 		return;
 	}
 
 	// broadcast a returned message if the user was idle or away before.
-	// don't broadcast if the user just changed their away message, though.
-#if 0
-	if( user->IsLoggedIn() && ( IsIdle(user) ||
-		(user->IsAway() && packet.iCode != CLIENT_AWAY)) )
-	{
+	if( user->IsLoggedIn() && (user->IsIdle() || user->IsAway()) )
 		Broadcast( ChatPacket(CLIENT_BACK, user->GetName(), BLANK) );
-	}
-#endif
 
 	// update idle/away and last message timestamp
 	user->PacketSent();
@@ -232,54 +239,92 @@ void ChatServer::HandleUserPacket( User *user, const std::string &buf )
 	/* write this packet to the log, including the user prefix, e.g.
 	 * Fire_Adept@192.168.1.1	3`_`hey sup d00dz`3`13`37
 	 */
-	string sLogLine( sUserPrefix );
-	sLogLine.push_back( '\t' );
-	sLogLine.append( packet.ToString() );
+	string sLogLine = StringUtil::Format( "%s\t%s",
+		sUserPrefix.c_str(), packet.ToString().c_str() );
 
 	Logger::ChatLog( sLogLine.c_str() );
 }	
 
 void ChatServer::CheckIdleStatus( User *user )
 {
-	// never bother with users who aren't logged in
-	if( !user->IsLoggedIn() )
+	// no need to update idle status here
+	if( !user->IsIdle() )
 		return;
 
-	// no sense forcing a recalculation for every branch
-	unsigned iIdleMinutes = user->GetIdleMinutes();
-
-	// nothing to do if the idle time is below the threshold
-	if( iIdleMinutes < MINUTES_TO_IDLE )
-		return;
-
-	// if the user is above our kick threshold, give 'em the boot
-	if( iIdleMinutes >= MINUTES_TO_IDLE_KICK )
+	// user has been away for too long, so kick 'em
+	if( user->IsInert() )
 	{
 		user->Write( ChatPacket(IDLE_KICK).ToString() );
 		user->Kill();
 		return;
 	}
 
+	const unsigned iIdleMinutes = user->GetIdleMinutes();
+
 	// do we need to broadcast an update message? (every minute)
-	if( user->GetIdleBroadcastSeconds() < 60 )
+	if( user->GetLastIdleMinute() == iIdleMinutes )
 		return;
 
 	// print the idle time into a string, broadcast it
 	string sIdleTime = StringUtil::Format( "%04u", iIdleMinutes );
-	Broadcast( ChatPacket(CLIENT_IDLE, user->GetNAme(), sIdleTime) );
+	Broadcast( ChatPacket(CLIENT_IDLE, user->GetName(), sIdleTime) );
 
 	// update the user's last idle broadcast timestamp
-	user->UpdateIdleBroadcast();
+	user->UpdateLastIdle();
 }
 
-bool ChatServer::IsIdle( const User *user ) const
+void ChatServer::HandleLoginState( User *user )
 {
-	return user->GetIdleMinutes() >= MINUTES_TO_IDLE;
+	/* dispatches messages to the user and/or server, as appropriate */
+	switch( user->GetLoginState() )
+	{
+	case LOGIN_ERROR:
+		user->Write( ChatPacket(ACCESS_DENIED).ToString() );
+		break;
+	case LOGIN_ERROR_ATTEMPTS:
+		user->Write( ChatPacket(LIMIT_REACHED).ToString() );
+		break;
+	case LOGIN_SERVER_DOWN:
+		user->Write( ChatPacket(SERVER_DOWN).ToString() );
+		break;
+	case LOGIN_SUCCESS:
+	{
+		// write 'accepted' response
+		user->Write( ChatPacket(ACCESS_GRANTED).ToString() );
+
+		// write configuration
+		ChatPacket prefs(CLIENT_CONFIG, BLANK, user->GetPrefs() );
+		user->Write( prefs.ToString() );
+
+		user->SetLoggedIn( true );
+		user->SetRoom( m_Rooms.GetDefaultRoom() );
+
+		// send the new guy a nice little versioning message
+		std::string ver = StringUtil::Format( "Server build %u,"
+			"compiled %s", BUILD_VERSION, BUILD_DATE );
+
+		user->Write( ChatPacket(WALL_MESSAGE, BLANK, ver).ToString() );
+
+		// tell everyone that this user joined
+		ChatPacket msg( USER_JOIN, user->GetName(), GetUserState(user) );
+		Broadcast( msg );
+
+		break;
+	}
+	case LOGIN_NONE:
+	case LOGIN_CHECKING:
+		Logger::SystemLog( "Shouldn't be here! %i", user->GetLoginState() );
+		break;
+	}
+
+	// unless the user successfully logged in, kill the connection.
+	if( user->GetLoginState() != LOGIN_SUCCESS )
+		user->Kill();
 }
 
 User* ChatServer::GetUserByName( const std::string &sName ) const
 {
-	for( list<User*>::iterator it = m_Users.begin(); it != m_Users.end(); it++ )
+	for( list<User*>::const_iterator it = m_Users.begin(); it != m_Users.end(); it++ )
 		if( !StringUtil::CompareNoCase((*it)->GetName(), sName) )
 			return (*it);
 
@@ -300,24 +345,16 @@ std::string ChatServer::GetUserState( const User *user ) const
 	ret.push_back( user->IsMuted() ? 'M' : '_' );
 
 	// display idle status, including time if needed
-	if( IsIdle(user) )
-	{
-		ret.push_back( 'i' );
-
-		// print idle time in 4 digits for the client
-		char sIdleTime[5];
-		snprintf( sIdleTime, 5, "%04u", user->GetIdleMinutes() );
-		ret.append( sIdleTime );
-	}
+	if( user->IsIdle() )
+		ret.append( StringUtil::Format( "i%04u", user->GetIdleMinutes()) );
 	else
-	{
 		ret.push_back( '_' );
-	}
 
 	// display away status, appending the message if away
-	ret.push_back( user->IsAway() ? 'a' : '_' );
 	if( user->IsAway() )
-		ret.append( user->GetMessage() );
+		ret.append( "a%s", user->GetMessage().c_str() );
+	else
+		ret.push_back( '_' );
 
 	return ret;
 }
@@ -329,9 +366,9 @@ void ChatServer::Broadcast( const ChatPacket &packet )
 	const std::string sPacketData = packet.ToString();
 
 	// send to every single user on the server
-	for( list<User*>::const_iterator it = m_Users.begin(); it != m_Users.end(); it++ )
+	for( list<User*>::iterator it = m_Users.begin(); it != m_Users.end(); it++ )
 	{
-		const User *user = (*it);
+		User *user = (*it);
 
 		// don't bother broadcasting to users who won't see it
 		if( !user->IsLoggedIn() )
@@ -346,22 +383,15 @@ void ChatServer::WallMessage( const std::string &sMessage )
 {
 	const std::string sPacket = ChatPacket(WALL_MESSAGE, BLANK, sMessage).ToString();
 
-	for( list<User*>::const_iterator it = m_Users.begin(); it != m_Users.end(); it++ )
+	for( list<User*>::iterator it = m_Users.begin(); it != m_Users.end(); it++ )
 	{
-		const User *user = (*it);
+		User *user = (*it);
+
 		if( !user->IsMod() )
 			continue;
 
 		user->Write( sPacket );
 	}
-}
-
-void ChatServer::Condemn( User *user )
-{
-	Logger::SystemLog( "Condemning %s (%p) to the scrap heap.", user->GetName().c_str(), user );
-
-	// delete this user after the update loop is done
-	m_UsersToDelete.insert( user );
 }
 
 int main( int argc, char **argv )
@@ -370,11 +400,12 @@ int main( int argc, char **argv )
 	// a client disconnected in an unexpected way.
 	sigignore( SIGPIPE );
 
-	// intercept SIGINT, SIGSEGV, and SIGTERM with our own version, 
+	// intercept these normally-fatal signals with our own version, 
 	// which will flush all of the server logs before exiting.
 	signal( SIGINT, sig_handler );
 	signal( SIGTERM, sig_handler );
 	signal( SIGSEGV, sig_handler );
+	signal( SIGABRT, sig_handler );
 
 	ChatServer server;
 	server.MainLoop();

@@ -72,19 +72,20 @@ void Socket::Close()
 
 int Socket::Read( char *buffer, unsigned len, bool bDontWait )
 {
-	int iRead = recv( m_iSocket, buffer, len, (bDontWait) ? MSG_DONTWAIT : 0 );
+//	int flags = (bDontWait) ? MSG_DONTWAIT : 0;
+	const int flags = 0;
+	int iRead = recv( m_iSocket, buffer, len, flags );
 
 	if( iRead <= 0 )
 	{
 		// ignore and return as an error
 		if( errno == EAGAIN || errno == EWOULDBLOCK )
-			return -1;
+			return 0;
 
-		Logger::SystemLog( "Write( %u, %p, %u, %d ) failed: %i (%s)",
+		Logger::SystemLog( "Read( %u, %p, %u, %d ) failed: %i (%s)",
 			m_iSocket, buffer, len, int(bDontWait), errno, strerror(errno) );
 
-		// if iRead returns 0, we disconnected. return that instead.
-		return (iRead == 0) ? 0 : -1;
+		return -1;
 	}
 
 	return iRead;
@@ -92,20 +93,19 @@ int Socket::Read( char *buffer, unsigned len, bool bDontWait )
 
 int Socket::Write( const char *buffer, unsigned len, bool bDontWait )
 {
-	Logger::SystemLog( "Write( %u, %s, %u, %s )", m_iSocket, buffer, len, bDontWait?"true":"false" );
-	int iSent = send( m_iSocket, buffer, len, (bDontWait) ? MSG_DONTWAIT : 0 );
+	const int flags = bDontWait ? MSG_DONTWAIT : 0;
+	int iSent = send( m_iSocket, buffer, len, flags );
 
 	if( iSent <= 0 )
 	{
-		// ignore and return as an error
+		// ignore and return
 		if( errno == EAGAIN || errno == EWOULDBLOCK )
-			return -1;
+			return 0;
 
 		Logger::SystemLog( "Write( %u, %p, %u, %d ) failed: %i (%s)",
 			m_iSocket, buffer, len, int(bDontWait), errno, strerror(errno) );
 
-		// if iSent returns 0, we disconnected. return that instead.
-		return (iSent == 0) ? 0 : -1;	
+		return -1;	
 	}
 
 	return iSent;

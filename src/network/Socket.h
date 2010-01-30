@@ -1,4 +1,4 @@
-	/* Wrapper class for a socket and associated operations. This way, we can
+/* Wrapper class for a socket and associated operations. This way, we can
  * abstract network operations and keep low-level stuff out of other files.
  */
 #ifndef SOCKET_H
@@ -25,7 +25,6 @@ public:
 	int Write( const char *buffer, unsigned len, bool bDontWait = true );
 	int Write( const std::string &str, bool bDontWait = true );
 
-	operator int() { return m_iSocket; }
 private:
 	int m_iSocket;
 };

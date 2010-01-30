@@ -13,11 +13,10 @@ bool UserLogout::HandlePacket( ChatServer *server, User *user, const ChatPacket 
 		return false;
 
 	// let everyone know this user has logged out (including that user)
-	ChatPacket notification( USER_PART, user->GetName(), BLANK );
-	server->Broadcast( &notification );
+	server->Broadcast( ChatPacket(USER_PART, user->GetName(), BLANK) );
 
 	user->SetLoggedIn( false );
-	server->Condemn( user );
+	user->Kill();
 
 	return true;
 }

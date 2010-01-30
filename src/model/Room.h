@@ -16,7 +16,7 @@ class Room
 {
 public:
 	// sends a packet to all members of this room
-	void Broadcast( const ChatPacket *packet );
+	void Broadcast( const ChatPacket &packet );
 
 	void AddUser( User *user );
 	void RemoveUser( User *user );

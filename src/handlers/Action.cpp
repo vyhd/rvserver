@@ -1,4 +1,5 @@
 #include "packet/PacketHandler.h"
+#include "model/Room.h"
 
 namespace RoomAction
 {
@@ -17,7 +18,7 @@ bool RoomAction::HandlePacket( ChatServer *server, User *user, const ChatPacket 
 	ChatPacket msg( packet->iCode, user->GetName(), packet->sMessage );
 
 	// broadcast the packet to the user's room
-	server->Broadcast( &msg );
+	user->GetRoom()->Broadcast( msg );
 
 	return true;
 }

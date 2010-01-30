@@ -101,10 +101,10 @@ void RoomList::RemoveRoom( const std::string &sRoom )
 
 	for( set<User*>::const_iterator it = users->begin(); it != users->end(); it++ )
 	{
-		(*it)->SetRoom( pDefault );
+		User *user = (*it);
 
-		ChatPacket msg( JOIN_ROOM, (*it)->GetName(), DEFAULT_ROOM );
-		pDefault->Broadcast( &msg );
+		ChatPacket msg( JOIN_ROOM, user->GetName(), DEFAULT_ROOM );
+		pDefault->Broadcast( msg );
 	}
 
 	delete( pRoom );

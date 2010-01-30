@@ -28,9 +28,6 @@ public:
 	/* returns a std::string expressing the user's current state */
 	std::string GetUserState( const User *user ) const;
 
-	/* returns true if this user meets the server criteria for idle */
-	bool IsIdle( const User *user ) const;
-
 	// no non-const version because no functions should need it
 	const std::list<User*>* GetUserList() const	{ return &m_Users; }
 
@@ -60,6 +57,9 @@ private:
 
 	/* handles a packet received from user */
 	void HandleUserPacket( User *user, const std::string &in );
+
+	/* handles the login status of a user */
+	void HandleLoginState( User *user );
 
 	/* checks the idle statistics of a user, broadcasts if needed */
 	void CheckIdleStatus( User *user );

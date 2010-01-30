@@ -8,11 +8,13 @@ const char* SYSTEM_FILE = "system.txt";
 /* Like, but not quite a singleton. */
 static Logger g_Logger( LOG_FILE, SYSTEM_FILE );
 
-/* writes a line into the given log file, with timestamp and \n. */
-void WriteLine( const char *str, FILE *pFile )
+/* writes a line into the given log file with timestamp and newline. */
+static void WriteLine( const char *str, FILE *pFile, Spinlock *spinlock )
 {
 	if( pFile == NULL )
 		return;
+
+	spinlock->Lock();
 
 	/* write a timestamp (e.g. [11:22:33]) with trailing space */
 	char timestamp[12];
@@ -22,9 +24,10 @@ void WriteLine( const char *str, FILE *pFile )
 
 	fputs( timestamp, pFile );
 
-	/* now, put the original string, including a newline */
+	/* now, put the original string and a newline. */
 	fputs( str, pFile );
 	fputc( '\n', pFile );
+	spinlock->Unlock();
 }
 
 Logger::Logger( const char *szLogPath, const char *szSystemPath )
@@ -45,6 +48,8 @@ Logger::Logger( const char *szLogPath, const char *szSystemPath )
 		printf( "Oh, bother. Something went dreadfully wrong." );
 		return;
 	}
+
+	m_pLock = new Spinlock;
 
 	/* write date/time headers for logging purposes */
 	char time_header[32];
@@ -75,6 +80,9 @@ Logger::~Logger()
 	Flush();
 	fclose( m_pLogFile );
 	fclose( m_pSystemFile );
+
+	delete m_pLock;
+	m_pLock = NULL;
 }
 
 void Logger::ChatLog( const char *str )
@@ -82,7 +90,7 @@ void Logger::ChatLog( const char *str )
 	if( !g_Logger.m_pLogFile )
 		return;
 
-	WriteLine( str, g_Logger.m_pLogFile );
+	WriteLine( str, g_Logger.m_pLogFile, g_Logger.m_pLock );
 	puts( str );
 }
 
@@ -100,7 +108,7 @@ void Logger::SystemLog( const char *fmt, ... )
 	va_end( args );
 
 	/* write the string to the system file and stdout. */
-	WriteLine( buf, g_Logger.m_pSystemFile );
+	WriteLine( buf, g_Logger.m_pSystemFile, g_Logger.m_pLock );
 	puts( buf );
 }
 

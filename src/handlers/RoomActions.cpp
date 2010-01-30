@@ -1,4 +1,5 @@
 #include "packet/PacketHandler.h"
+#include "logger/Logger.h"
 #include "model/Room.h"
 #include "model/RoomList.h"
 
@@ -27,10 +28,7 @@ bool HandleJoin( ChatServer *server, User *user, const ChatPacket *packet )
 		return false;
 
 	room->AddUser( user );
-
-	// broadcast the new room join
-	ChatPacket msg( JOIN_ROOM, user->GetName(), sRoom );
-	server->Broadcast( &msg );
+	server->Broadcast( ChatPacket(JOIN_ROOM, user->GetName(), sRoom) );
 
 	return true;
 }
@@ -47,7 +45,7 @@ bool HandleCreate( ChatServer *server, User *user, const ChatPacket *packet )
 	if( room != NULL )
 	{
 		ChatPacket msg( WALL_MESSAGE, BLANK, "That room already exists!" );
-		user->GetSocket()->Write( msg.ToString() );
+		user->Write( msg.ToString() );
 		return false;
 	}
 
@@ -55,26 +53,25 @@ bool HandleCreate( ChatServer *server, User *user, const ChatPacket *packet )
 	if( sRoom.length() > 16 )
 	{
 		ChatPacket msg( WALL_MESSAGE, BLANK, "Room names are limited to 16 characters." );
-		user->GetSocket()->Write( msg.ToString() );
+		user->Write( msg.ToString() );
 		return false;
 	}
 
 	list->AddRoom( sRoom );
 
-	// broadcast the creation of the room
+	// this should never fail - we just added it
+	room = list->GetRoom( sRoom );
+	if( room == NULL )
 	{
-		ChatPacket msg( CREATE_ROOM, BLANK, sRoom );
-		server->Broadcast( &msg );
+		Logger::SystemLog( "Failed to get newly created room \"%s\"!", sRoom.c_str() );
+		return true;	// log it
 	}
 
-	// this should never fail - we just added it
 	room->AddUser( user );
 
-	// broadcast the new room join
-	{
-		ChatPacket msg( JOIN_ROOM, user->GetName(), sRoom );
-		server->Broadcast( &msg );
-	}
+	// broadcast the new room creation and join
+	server->Broadcast( ChatPacket(CREATE_ROOM, BLANK, sRoom) );
+	server->Broadcast( ChatPacket(JOIN_ROOM, user->GetName(), sRoom) );
 
 	return true;
 }
@@ -90,17 +87,14 @@ bool HandleDestroy( ChatServer *server, User *user, const ChatPacket *packet )
 	if( sRoom.compare(DEFAULT_ROOM) == 0 )
 	{
 		const std::string HAL = "[Server] I'm afraid I can't let you do that, " + user->GetName() + ".";
-		ChatPacket msg( WALL_MESSAGE, BLANK, HAL );
-		server->Broadcast( &msg );
-		server->Condemn( user );
+		server->Broadcast( ChatPacket(WALL_MESSAGE, BLANK, HAL) );
+		user->Kill();
 		return true;
 	}
 
+	// remove the room and broadcast its destruction
 	server->GetRoomList()->RemoveRoom( sRoom );
-
-	// broadcast the room's destrucity
-	ChatPacket msg( DESTROY_ROOM, BLANK, sRoom );
-	server->Broadcast( &msg );
+	server->Broadcast( ChatPacket(DESTROY_ROOM, BLANK, sRoom) );
 
 	return true;
 }
@@ -127,8 +121,7 @@ bool HandleForceJoin( ChatServer *server, User *user, const ChatPacket *packet )
 	room->AddUser( target );
 
 	// broadcast the new room join
-	ChatPacket msg( JOIN_ROOM, target->GetName(), sRoom );
-	server->Broadcast( &msg );
+	server->Broadcast( ChatPacket(JOIN_ROOM, target->GetName(), sRoom) );
 
 	const std::string sMessage = target->GetName() + " was forced to join "
 		+ sRoom + " by " + user->GetName();

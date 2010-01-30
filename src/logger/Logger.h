@@ -6,6 +6,7 @@
 
 /* XXX: can we move this into the .cpp file? */
 #include <cstdio>
+#include "util/Thread.h"
 
 class Logger
 {
@@ -23,6 +24,10 @@ public:
 private:
 	FILE*	m_pLogFile;
 	FILE*	m_pSystemFile;
+
+	/* Used to make logging thread safe. Printing data runs on the order
+	 * of microseconds, so we can avoid kernel context switches here. */
+	Spinlock* m_pLock;
 };
 
 #endif // LOGGER_H

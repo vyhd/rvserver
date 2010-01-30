@@ -13,9 +13,19 @@
 
 class Room;
 
-/* character codes indicating moderators and the number thereof */
-const char MOD_LEVELS[] = { 'A', 'C', 'b', 'f', 'c', '!' };
-const unsigned NUM_MOD_LEVELS = sizeof(MOD_LEVELS)/sizeof(MOD_LEVELS[0]);
+/* primitive synchronization state: users have a LoginState. We can use
+ * this to (indirectly) communicate between the ChatServer and the database
+ * worker. TODO: make this a better architecture.
+ */
+enum LoginState
+{
+	LOGIN_NONE,		/* login not attempted yet */
+	LOGIN_CHECKING,		/* login checking: don't reap! */
+	LOGIN_SUCCESS,		/* user has been verified. */	
+	LOGIN_ERROR,		/* verification failed: bad credentials */
+	LOGIN_ERROR_ATTEMPTS,	/* login failed: too many attempts. */
+	LOGIN_SERVER_DOWN	/* login failed: no response from server. */
+};
 
 /* idle time limits */
 const unsigned MINUTES_TO_IDLE = 5;
@@ -27,20 +37,25 @@ public:
 	User( unsigned iSocket );
 	~User();
 
+	// force the user to quit, e.g. failed validation or kicked.
+	void Kill() { m_Socket.Close(); }
+
+	// if this is true, reap the user when possible.
+	bool IsDead() const
+	{
+		return !m_Socket.IsOpen() && m_LoginState != LOGIN_CHECKING;
+	}
+
 	// one part convenience, one part error detection
-	int Write( const std::string &str );
 	int Read( char *buffer, unsigned len );
-	const char* GetIP() const	{ return m_Socket.GetIP(); }
+	int Write( const std::string &str );
+	const char* GetIP() const { return m_Socket.GetIP(); }
 
-	// if this is true, the socket closed due to bad communication.
-	// we'll reap the user after the main update loop is done.
-	bool IsDead() const	{ return !m_Socket.IsOpen(); }
-
-	// force the user to quit, e.g. failed validation or kicked
-	void Kill()		{ m_Socket.Close(); }
+	/* get/set login state */
+	LoginState GetLoginState() const	{ return m_LoginState; }
+	void SetLoginState( LoginState s )	{ m_LoginState = s; }
 
 	/* set/get user properties */
-
 	bool IsAway() const	{ return m_bAway; }
 	bool IsMuted() const	{ return m_bMuted; }
 	bool IsLoggedIn() const	{ return m_bLoggedIn; }
@@ -70,11 +85,16 @@ public:
 	unsigned GetIdleSeconds() const;
 	unsigned GetIdleMinutes() const	{ return GetIdleSeconds() / 60; }
 
-	bool IsIdle() const { return GetIdleMinutes() >= 5; }
-	
-
 	/* resets idle/away statuses and the last message timer */
 	void PacketSent();
+
+	// last time the user's idle status was acknowledged
+	unsigned GetLastIdleMinute() const { return m_iLastIdleMinute; }
+	void UpdateLastIdle() { m_iLastIdleMinute = GetIdleMinutes(); }
+
+	bool IsIdle() const { return GetIdleMinutes() >= MINUTES_TO_IDLE; }
+	// *boot*
+	bool IsInert() const { return GetIdleMinutes() >= MINUTES_TO_IDLE_KICK; }
 
 private:
 	/* Socket descriptor for this user's connection */
@@ -88,15 +108,14 @@ private:
 	std::string m_sMessage;
 
 	/* basic user details */
-	std::string m_sName;
-	std::string m_sPrefs;
-
+	std::string m_sName, m_sPrefs;
 	char m_cLevel;
+	bool m_bLoggedIn, m_bMuted;
 
-	bool m_bLoggedIn;
-	bool m_bMuted;
-
+	unsigned m_iLastIdleMinute;
 	time_t m_LastActive;
+
+	LoginState m_LoginState;
 };
 
 #endif // USER_H

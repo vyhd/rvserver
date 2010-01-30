@@ -24,7 +24,7 @@ bool PrivateMessage::HandlePacket( ChatServer *server, User *user, const ChatPac
 	ChatPacket msg( USER_PM, user->GetName(), packet->sMessage );
 
 	// send this packet to the recipient
-	recipient->GetSocket()->Write( msg.ToString() );
+	recipient->Write( msg.ToString() );
 
 	return true;
 }

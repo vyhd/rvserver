@@ -68,8 +68,8 @@ bool HandleRemoveAction( ChatServer *server, User *user, const ChatPacket *packe
 	if( target != NULL )
 	{
 		ChatPacket notify( packet->iCode );
-		target->GetSocket()->Write( notify.ToString() );
-		server->Condemn( target );
+		target->Write( notify.ToString() );
+		target->Kill();
 	}
 
 	return true;
@@ -89,8 +89,9 @@ bool HandleMuteAction( ChatServer *server, User *user, const ChatPacket *packet,
 
 	target->SetMuted( bMute );
 
+	// pass on the mute (or unmute), who it affected, and who did it
 	ChatPacket msg( packet->iCode, target->GetName(), user->GetName() );
-	server->Broadcast( &msg );
+	server->Broadcast( msg );
 
 	return true;
 }
@@ -140,7 +141,7 @@ bool HandleQuery( ChatServer *server, User *user, const ChatPacket *packet )
 
 	// send a packet back to the caller giving the IP address
 	ChatPacket query( IP_QUERY, target->GetName(), user->GetIP() );
-	user->GetSocket()->Write( query.ToString() );
+	user->Write( query.ToString() );
 
 	/* send a global message about this action */
 	std::string sMessage = target->GetName() + " was " +
@@ -158,7 +159,7 @@ bool HandleClear( ChatServer *server, User *user, const ChatPacket *packet )
 
 	// broadcast a message to clients so they blank their screens
 	ChatPacket msg( FORCE_CLEAR, user->GetName(), BLANK );
-	user->GetRoom()->Broadcast( &msg );
+	user->GetRoom()->Broadcast( msg );
 
 	return true;
 }

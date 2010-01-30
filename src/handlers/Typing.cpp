@@ -26,7 +26,7 @@ bool Typing::HandlePacket( ChatServer *server, User *user, const ChatPacket *pac
 
 	// create a packet with the sender's name and send the handled code
 	ChatPacket notification( packet->iCode, user->GetName(), BLANK );
-	server->Send( &notification, recipient );
+	recipient->Write( notification.ToString() );
 
 	return true;
 }

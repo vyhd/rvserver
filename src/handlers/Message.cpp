@@ -20,7 +20,7 @@ bool RoomMessage::HandlePacket( ChatServer *server, User *user, const ChatPacket
 	// set the first param to the user's name
 	msg.sUsername.assign( user->GetName() );
 
-	user->GetRoom()->Broadcast( &msg );
+	user->GetRoom()->Broadcast( msg );
 
 	return true;
 }

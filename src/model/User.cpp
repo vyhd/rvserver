@@ -9,6 +9,7 @@ User::User( unsigned iSocket ) : m_Socket(iSocket), m_sName("<no name>")
 	m_cLevel = '_';
 	m_bLoggedIn = m_bMuted = m_bAway = false;
 	m_LastActive = time_t(NULL);
+	m_LoginState = LOGIN_NONE;
 }
 
 User::~User()
@@ -18,11 +19,18 @@ User::~User()
 
 bool User::IsMod() const
 {
-	for( unsigned i = 0; i < NUM_MOD_LEVELS; i++ )
-		if( m_cLevel == MOD_LEVELS[i] )
+	switch( m_cLevel )
+	{
+		case 'A':
+		case 'C':
+		case 'c':
+		case 'b':
+		case 'f':
+		case '!':
 			return true;
-
-	return false;
+		default:
+			return false;
+	}
 }
 
 /* returns time from then to now, in seconds */
@@ -36,11 +44,6 @@ static unsigned GetElapsedSeconds( time_t then )
 unsigned User::GetIdleSeconds() const
 {
 	return GetElapsedSeconds( m_LastActive );
-}
-
-unsigned User::GetIdleBroadcastSeconds() const
-{
-	return GetElapsedSeconds( m_LastIdleBroadcast );
 }
 
 void User::PacketSent()
@@ -57,9 +60,12 @@ void User::PacketSent()
 
 int User::Write( const std::string &str )
 {
+	if( !m_Socket.IsOpen() )
+		return -1;
+
 	int iSent = m_Socket.Write( str );
 
-	if( iSent <= 0 )
+	if( iSent < 0 )
 	{
 		Logger::SystemLog( "Write failed for %s (%s): killing.", m_sName.c_str(), strerror(errno) );
 		m_Socket.Close();
@@ -71,9 +77,12 @@ int User::Write( const std::string &str )
 
 int User::Read( char *buffer, unsigned len )
 {
+	if( !m_Socket.IsOpen() )
+		return -1;
+
 	int iRead = m_Socket.Read( buffer, len );
 
-	if( iRead <= 0 )
+	if( iRead < 0 )
 	{
 		Logger::SystemLog( "Read failed for %s (%s): killing.", m_sName.c_str(), strerror(errno) );
 		m_Socket.Close();

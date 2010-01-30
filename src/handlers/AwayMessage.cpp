@@ -1,4 +1,5 @@
 #include "packet/PacketHandler.h"
+#include "model/Room.h"
 
 bool HandleAway( ChatServer *server, User *user, const ChatPacket *packet );
 
@@ -14,13 +15,13 @@ bool HandleAway( ChatServer *server, User *user, const ChatPacket *packet )
 
 	// broadcast a status change packet
 	ChatPacket away( CLIENT_AWAY, user->GetName(), user->GetMessage() );
-	server->Broadcast( &away );
+	server->Broadcast( away );
 
 	// broadcast a notification if the user wasn't away yet
 	if( !user->IsAway() )
 	{
 		ChatPacket msg( WALL_MESSAGE, BLANK, user->GetName() + " has gone away." );
-		server->Broadcast( &msg );
+		user->GetRoom()->Broadcast( msg );
 	}
 
 	user->SetAway( true );
