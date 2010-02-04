@@ -8,6 +8,7 @@
 #include <string>
 #include "network/SocketListener.h"
 #include "model/RoomList.h"
+#include "util/Config.h"
 
 class ChatPacket;
 class DatabaseConnector;
@@ -19,7 +20,8 @@ const unsigned BUFFER_SIZE = 1024*4;
 class ChatServer
 {
 public:
-	ChatServer();
+	/* Starts the chat server with settings loaded from this file. */
+	ChatServer( const char *config );
 	~ChatServer();
 
 	// returns a reference to the user with the given name
@@ -78,6 +80,9 @@ private:
 
 	/* set of all users being updated */
 	std::list<User*> m_Users;
+
+	/* stores configuration data */
+	Config m_Config;
 };
 
 #endif // CHAT_SERVER_H

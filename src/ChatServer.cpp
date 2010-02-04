@@ -21,17 +21,17 @@
 
 using namespace std;
 
-/* wait 0.15 seconds between update cycles */
-const unsigned SLEEP_MICROSECONDS = 1000*150;
+/* wait 0.15 seconds between update cycles by default */
+const unsigned SLEEP_DEFAULT = 1000*150;
 
 /* Default settings for the chat server */
-const int SERVER_PORT = 7005;
-const char* const DATABASE_HOST = "www.runevillage.com";
+//const int SERVER_PORT = 7005;
+//const char* const DATABASE_HOST = "www.runevillage.com";
 
 /* HTML pages relative to DATABASE_HOST */
 // TODO: softcode this!
-const char* const LOGIN_PAGE = "/ThePub/authenticate.php";
-const char* const CONFIG_PAGE = "/ThePub/chatconfig.php";
+//const char* const LOGIN_PAGE = "/ThePub/authenticate.php";
+//const char* const CONFIG_PAGE = "/ThePub/chatconfig.php";
 
 ChatServer* g_pServer = NULL;
 
@@ -40,23 +40,58 @@ unsigned g_iBytesSent = 0;
 unsigned g_iBytesRead = 0;
 unsigned g_iBytesBroadcast = 0;
 
-ChatServer::ChatServer()
+/* TODO: stuff most of this logic into a ::Start routine. */
+ChatServer::ChatServer( const char *config ) : m_pListener(NULL)
 {
+	// direct global error handling callbacks to this server
 	g_pServer = this;
 
-	m_pListener = new SocketListener;
-	m_pListener->Connect( SERVER_PORT );
+	if( !m_Config.Load(config) )
+	{
+		Logger::SystemLog( "Failed to load configuration! Server can't start..." );
+		return;
+	}
+
+	int iPort = m_Config.GetInt( "ServerPort" );
+
+	if( iPort != 0 )
+	{
+		m_pListener = new SocketListener;
+		m_pListener->Connect( iPort );
+	}
+
+	const char* DATABASE_HOST 	= m_Config.Get( "DatabaseHost" );
+	const char* LOGIN_PAGE 		= m_Config.Get( "LoginPage" );
+	const char* CONFIG_PAGE		= m_Config.Get( "ConfigPage" );
+
+	if( !DATABASE_HOST || !LOGIN_PAGE || !CONFIG_PAGE )
+	{
+		Logger::SystemLog( "Could not find necessary database config!" );
+		return;
+	}
 
 	m_pConnector = new DatabaseConnector( DATABASE_HOST, LOGIN_PAGE, CONFIG_PAGE );
 
-	// add additional rooms to the system
-	m_Rooms.AddRoom( "Spam Room" );
+	const char* EXTRA_ROOMS		= m_Config.Get( "AdditionalRooms" );
+
+	if( EXTRA_ROOMS )
+	{
+		vector<string> vsRooms;
+		StringUtil::Split( EXTRA_ROOMS, vsRooms, ',' );
+
+		for( unsigned i = 0; i < vsRooms.size(); i++ )
+			m_Rooms.AddRoom( vsRooms[i] );
+	}
 }
 
 ChatServer::~ChatServer()
 {
-	m_pListener->Disconnect();
-	delete m_pListener;
+	if( m_pListener )
+	{
+		m_pListener->Disconnect();
+		delete m_pListener;
+		m_pListener = NULL;
+	}
 }
 
 void ChatServer::AddUser( unsigned iSocket )
@@ -89,6 +124,14 @@ void ChatServer::RemoveUser( User *user )
 
 void ChatServer::MainLoop()
 {
+	// no listener means no connection; no connection means no server.
+	if( m_pListener == NULL )
+		return;
+
+	/* allow sleep time as a configuration, but provide a default */
+	unsigned iSleepTime = m_Config.GetInt( "SleepMicroseconds" );
+	const unsigned SLEEP_MICROSECONDS = (iSleepTime != 0) ? iSleepTime : 150*1000;
+
 	struct timeval tv_start, tv_end;
 	while( true )
 	{
@@ -409,7 +452,7 @@ int main( int argc, char **argv )
 	signal( SIGSEGV, sig_handler );
 	signal( SIGABRT, sig_handler );
 
-	ChatServer server;
+	ChatServer server( "config.txt" );
 	server.MainLoop();
 	return 0;
 }

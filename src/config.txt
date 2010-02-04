@@ -1,0 +1,12 @@
+ServerPort=7005
+
+DatabaseHost=www.runevillage.com
+
+// must be relative to DatabaseHost
+LoginPage=/ThePub/authenticate.php
+ConfigPage=/ThePub/chatconfig.php
+
+AdditionalRooms=Spam Room
+
+// optional; determines sleep time between updates
+SleepMicroseconds=10

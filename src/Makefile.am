@@ -2,7 +2,7 @@ bin_PROGRAMS = rvserver
 
 noinst_PROGRAMS = rvserver
 
-AM_CXXFLAGS = -ggdb -fno-inline -Wall -pedantic
+AM_CXXFLAGS = -ggdb -Wall -pedantic
 
 # some hacky stuff to get a build version auto-updating
 .PHONY: build_ver
@@ -32,6 +32,7 @@ Packet = packet/ChatPacket.cpp packet/ChatPacket.h \
 
 Util = util/libb64/cencode.c util/libb64/cencode.h \
 	util/Base64.cpp util/Base64.h \
+	util/Config.cpp util/Config.h \
 	util/StringUtil.cpp util/StringUtil.h \
 	util/Thread.cpp util/Thread.h \
 	util/URLEncoding.cpp util/URLEncoding.h
@@ -39,7 +40,6 @@ Util = util/libb64/cencode.c util/libb64/cencode.h \
 Handlers = \
 	handlers/Action.cpp \
 	handlers/AwayMessage.cpp \
-	handlers/Config.cpp \
 	handlers/ListRooms.cpp \
 	handlers/ListUsers.cpp \
 	handlers/Login.cpp \
@@ -48,6 +48,7 @@ Handlers = \
 	handlers/ModActions.cpp \
 	handlers/RoomActions.cpp \
 	handlers/PrivateMessage.cpp \
+	handlers/SetConfig.cpp \
 	handlers/Typing.cpp
 
 # Compile handlers last due to deps
