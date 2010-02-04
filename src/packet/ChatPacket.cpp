@@ -74,10 +74,10 @@ bool ChatPacket::FromString( const string &sData )
  * buffer and formatted, then copied to a string and returned. */
 string ChatPacket::ToString() const
 {
-	// 3 digits for code, two variable params, 9 digits for RGB, 5 delims, "\n"
-	size_t iLen = 3 + sUsername.size() + sMessage.size() + 9 + 7;
-	char *sBuffer = new char[iLen];
+	/* Create a buffer based off param sizes and a bit extra (for delims, numbers) */
+	unsigned iLen = sUsername.size() + sMessage.size() + 20;
 
+	char *sBuffer = new char[iLen];
 	snprintf( sBuffer, iLen, "%u`%s`%s`%u`%u`%u\n", iCode, sUsername.c_str(), sMessage.c_str(), r, g, b );
 	string ret( sBuffer );
 	delete sBuffer;

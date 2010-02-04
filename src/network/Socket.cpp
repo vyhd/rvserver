@@ -72,8 +72,7 @@ void Socket::Close()
 
 int Socket::Read( char *buffer, unsigned len, bool bDontWait )
 {
-//	int flags = (bDontWait) ? MSG_DONTWAIT : 0;
-	const int flags = 0;
+	int flags = (bDontWait) ? MSG_DONTWAIT : 0;
 	int iRead = recv( m_iSocket, buffer, len, flags );
 
 	if( iRead <= 0 )

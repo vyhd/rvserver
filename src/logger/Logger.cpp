@@ -100,11 +100,11 @@ void Logger::SystemLog( const char *fmt, ... )
 		return;
 
 	/* to cut down on processing, we write once and output twice. */
-	char buf[256];
+	char buf[1024];
 
 	va_list args;
 	va_start( args, fmt );
-	vsnprintf( buf, 256, fmt, args );
+	vsnprintf( buf, 1024, fmt, args );
 	va_end( args );
 
 	/* write the string to the system file and stdout. */

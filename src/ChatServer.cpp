@@ -10,6 +10,7 @@
 
 #include "ChatServer.h"
 #include "logger/Logger.h"
+#include "model/Room.h"
 #include "model/User.h"
 #include "network/DatabaseConnector.h"
 #include "packet/ChatPacket.h"
@@ -23,8 +24,14 @@ using namespace std;
 /* wait 0.15 seconds between update cycles */
 const unsigned SLEEP_MICROSECONDS = 1000*150;
 
-/* this is the server port unless otherwise set */
+/* Default settings for the chat server */
 const int SERVER_PORT = 7005;
+const char* const DATABASE_HOST = "www.runevillage.com";
+
+/* HTML pages relative to DATABASE_HOST */
+// TODO: softcode this!
+const char* const LOGIN_PAGE = "/ThePub/authenticate.php";
+const char* const CONFIG_PAGE = "/ThePub/chatconfig.php";
 
 ChatServer* g_pServer = NULL;
 
@@ -33,32 +40,6 @@ unsigned g_iBytesSent = 0;
 unsigned g_iBytesRead = 0;
 unsigned g_iBytesBroadcast = 0;
 
-/* On caught signal, add a message and flush logs before exiting. */
-void sig_handler( int signum )
-{
-	Logger::SystemLog( "Caught code %d (%s): exiting.", signum, strsignal(signum) );
-	Logger::SystemLog( "%u bytes sent, %u bytes received, %u bytes broadcast", g_iBytesSent, g_iBytesRead, g_iBytesBroadcast );
-
-	if( g_pServer )
-	{
-//		ChatPacket msg( WALL_MESSAGE, BLANK, "AAAA! EL SERVIDOR ESTA TERMINANDO! VAMOS A MORIR EN 5 SEGUNDOS!" );
-//		g_pServer->Broadcast( &msg );
-
-//		sleep( 5 );
-
-		// cleanly remove all users
-		list<User*>::const_iterator it = g_pServer->GetUserList()->begin();
-
-		for( ; it != g_pServer->GetUserList()->end(); it++ )
-		{
-			ChatPacket kill( USER_PART, (*it)->GetName(), "_" );
-			g_pServer->Broadcast( kill );
-		}
-	}
-
-	exit(signum);
-}
-
 ChatServer::ChatServer()
 {
 	g_pServer = this;
@@ -66,9 +47,7 @@ ChatServer::ChatServer()
 	m_pListener = new SocketListener;
 	m_pListener->Connect( SERVER_PORT );
 
-	// TODO: softcode this!
-	m_pConnector = new DatabaseConnector( "www.runevillage.com",
-		"/ThePub/authenticate.php", "/ThePub/chatconfig.php" );
+	m_pConnector = new DatabaseConnector( DATABASE_HOST, LOGIN_PAGE, CONFIG_PAGE );
 
 	// add additional rooms to the system
 	m_Rooms.AddRoom( "Spam Room" );
@@ -97,6 +76,9 @@ void ChatServer::RemoveUser( User *user )
 	{
 		user->SetLoggedIn( false );
 		Broadcast( ChatPacket(USER_PART, user->GetName(), BLANK) );
+
+		// save this user's preferences
+		m_pConnector->SavePrefs( user );
 	}
 
 	// take this user out of the RoomList
@@ -129,11 +111,10 @@ void ChatServer::MainLoop()
 			if( !user->IsLoggedIn() )
 			{
 				const LoginState state = user->GetLoginState();
-Logger::SystemLog( "State of %s: %i", user->GetName().c_str(), state );
 
-				// we aren't expecting data yet.
+				// we're not expecting any data just yet.
 				if( state == LOGIN_CHECKING )
-					return;
+					continue;
 
 				// if the user's login completed, check it.
 				if( state != LOGIN_NONE )
@@ -155,6 +136,7 @@ Logger::SystemLog( "State of %s: %i", user->GetName().c_str(), state );
 				it = m_Users.erase( it );
 				RemoveUser( user );
 			}
+
 		}
 
 		// flush all the logs to disk on update
@@ -292,15 +274,15 @@ void ChatServer::HandleLoginState( User *user )
 		// write 'accepted' response
 		user->Write( ChatPacket(ACCESS_GRANTED).ToString() );
 
-		// write configuration
+		// write configuration (which was set by the login request)
 		ChatPacket prefs(CLIENT_CONFIG, BLANK, user->GetPrefs() );
 		user->Write( prefs.ToString() );
 
+		m_Rooms.GetDefaultRoom()->AddUser( user );
 		user->SetLoggedIn( true );
-		user->SetRoom( m_Rooms.GetDefaultRoom() );
 
-		// send the new guy a nice little versioning message
-		std::string ver = StringUtil::Format( "Server build %u,"
+		// send the new guy a nice little version message
+		std::string ver = StringUtil::Format( "Server build %u, "
 			"compiled %s", BUILD_VERSION, BUILD_DATE );
 
 		user->Write( ChatPacket(WALL_MESSAGE, BLANK, ver).ToString() );
@@ -313,7 +295,7 @@ void ChatServer::HandleLoginState( User *user )
 	}
 	case LOGIN_NONE:
 	case LOGIN_CHECKING:
-		Logger::SystemLog( "Shouldn't be here! %i", user->GetLoginState() );
+		Logger::SystemLog( "Aaaaah! Shouldn't be here! State %i", user->GetLoginState() );
 		break;
 	}
 
@@ -392,6 +374,26 @@ void ChatServer::WallMessage( const std::string &sMessage )
 
 		user->Write( sPacket );
 	}
+}
+
+/* On caught signal, add a message and flush logs before exiting. */
+static void sig_handler( int signum )
+{
+	Logger::SystemLog( "Caught code %d (%s): exiting.", signum, strsignal(signum) );
+
+	if( g_pServer )
+	{
+		// cleanly remove all users
+		list<User*>::const_iterator it = g_pServer->GetUserList()->begin();
+
+		for( ; it != g_pServer->GetUserList()->end(); it++ )
+		{
+			ChatPacket kill( USER_PART, (*it)->GetName(), "_" );
+			g_pServer->Broadcast( kill );
+		}
+	}
+
+	exit(signum);
 }
 
 int main( int argc, char **argv )

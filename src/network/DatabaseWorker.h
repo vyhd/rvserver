@@ -12,13 +12,16 @@ struct Request;
 
 class DatabaseWorker
 {
-public:
+	// We don't allow any direct access to these methods.
+	// They must go through the Connector only.
+	friend class DatabaseConnector;
+protected:
 	/* host must be an absolute URL. auth/config are relative to host. */
 	DatabaseWorker( const std::string &host, const std::string &auth, const std::string &config );
 	~DatabaseWorker();
 
 	// kill the worker thread
-	void Stop() { m_bRunning = false; }
+	void Stop();
 
 	bool IsConnected() const { return m_Socket.IsOpen(); }
 
@@ -47,6 +50,9 @@ private:
 
 	std::string m_sServer, m_sAuthPage, m_sConfigPage;
 	std::queue<Request*> m_Requests;
+
+	/* Only allow one system to access the queue at a time. */
+	Spinlock m_QueueLock;
 
 	/* true while the thread is still running. */
 	bool m_bRunning;

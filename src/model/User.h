@@ -33,6 +33,9 @@ const unsigned MINUTES_TO_IDLE_KICK = 90;
 
 class User
 {
+	// We only let Room call SetRoom(), for consistency.
+	friend class Room;
+
 public:
 	User( unsigned iSocket );
 	~User();
@@ -69,7 +72,6 @@ public:
 	bool IsMod() const;
 
 	Room* GetRoom() const	{ return m_pRoom; }
-	void SetRoom( Room* p )	{ m_pRoom = p; }
 
 	/* get name/away/room/prefs */
 	const std::string& GetName() const	{ return m_sName; }
@@ -97,6 +99,8 @@ public:
 	bool IsInert() const { return GetIdleMinutes() >= MINUTES_TO_IDLE_KICK; }
 
 private:
+	void SetRoom( Room* p )	{ m_pRoom = p; }
+
 	/* Socket descriptor for this user's connection */
 	Socket m_Socket;
 

@@ -1,29 +1,30 @@
 #include <cerrno>
 
 #include "DatabaseConnector.h"
+#include "DatabaseWorker.h"
 #include "model/User.h"
 #include "logger/Logger.h"
-#include "Socket.h"
-
-#include "util/Base64.h"
-#include "util/URLEncoding.h"
-#include "util/StringUtil.h"
 
 using namespace std;
-using namespace StringUtil;
 
 DatabaseConnector::DatabaseConnector( const string &server, const string &auth, const string &config )
-	: m_Worker( server, auth, config )
 {
-	// this space left blank
+	m_pWorker = new DatabaseWorker( server, auth, config );
 }
 
 DatabaseConnector::~DatabaseConnector()
 {
-	m_Worker.Stop();
+	m_pWorker->Stop();
+	delete m_pWorker;
+	m_pWorker = NULL;
 }
 
 void DatabaseConnector::Login( User *user, const string &passwd )
 {
-	m_Worker.Login( user, passwd );
+	m_pWorker->Login( user, passwd );
+}
+
+void DatabaseConnector::SavePrefs( const User *user )
+{
+	m_pWorker->SavePrefs( user );
 }

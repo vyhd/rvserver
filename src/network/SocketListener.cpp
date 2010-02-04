@@ -15,11 +15,13 @@
 
 SocketListener::SocketListener()
 {
+	Logger::SystemLog( "SocketListener::SocketListener" );
 	// this space left blank
 }
 
 SocketListener::~SocketListener()
 {
+	Logger::SystemLog( "SocketListener::~SocketListener" );
 	Disconnect();
 }
 
@@ -33,6 +35,8 @@ void SocketListener::Disconnect()
 
 bool SocketListener::Connect( int iPort )
 {
+	Logger::SystemLog( "SocketListener::Connect( %d )", iPort );
+
 	// Let Listen() know what port we're running on.
 	m_iPort = iPort;
 

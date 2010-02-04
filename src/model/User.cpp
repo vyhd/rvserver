@@ -21,12 +21,8 @@ bool User::IsMod() const
 {
 	switch( m_cLevel )
 	{
-		case 'A':
-		case 'C':
-		case 'c':
-		case 'b':
-		case 'f':
-		case '!':
+		case 'A': case 'C': case 'c':
+		case 'b': case 'f': case '!':
 			return true;
 		default:
 			return false;

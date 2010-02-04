@@ -22,15 +22,12 @@ bool Login::HandlePacket( ChatServer *server, User* const user, const ChatPacket
 	// if this name is already logged in, don't let it log in again.
 	if( server->GetUserByName(packet->sUsername) != NULL )
 	{
-		// HACK: sometimes, it doesn't get killed users fast enough.
-		// if this user has the same IP, boot the original.
-		// work around it until we get a proper solution (keepalive?) in place.
+		// HACK: the server doesn't always boot dead users quickly enough.
+		// Work around it until we get a proper solution (keepalive?) in place.
 		User *other = server->GetUserByName(packet->sUsername);
 
-		// you...you DOUBLE HACK: change the other user
-		// name so it won't kill us when we log in.
-		other->SetName( other->GetName() + " (dead)" );
-		other->Kill();
+		if( other->GetIP() == user->GetIP() )
+			other->Kill();
 	}
 
 	// set the user's name from the login packet
@@ -39,6 +36,8 @@ bool Login::HandlePacket( ChatServer *server, User* const user, const ChatPacket
 	// dispatch a message to the connector to check login status.
 	DatabaseConnector *conn = server->GetConnection();
 	conn->Login( user, packet->sMessage );
+
+	// 
 
 	return true;
 }

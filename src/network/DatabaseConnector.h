@@ -10,7 +10,7 @@
 #include "Socket.h"
 
 class User;
-#include "network/DatabaseWorker.h"
+class DatabaseWorker;
 
 class DatabaseConnector
 {
@@ -24,8 +24,7 @@ public:
 	void SavePrefs( const User *user );
 
 private:
-
-	DatabaseWorker m_Worker;
+	DatabaseWorker* m_pWorker;
 };
 
 #endif // DATABASE_CONNECTOR_H
