@@ -1,11 +1,9 @@
 #include <cerrno>
 #include <cctype>
 #include <cstdlib>
-#include <cstring>	// for memset, strcasecmp
 #include <vector>	// for PacketUtil::Split
 
 #include <unistd.h>
-#include <signal.h>
 #include <sys/time.h>	// for timestamping
 
 #include "ChatServer.h"
@@ -16,63 +14,24 @@
 #include "packet/ChatPacket.h"
 #include "packet/PacketUtil.h"
 #include "packet/PacketHandler.h"
+#include "util/Config.h"
 #include "util/StringUtil.h"
 #include "verinfo.h"	// for BUILD_DATE, BUILD_VERSION
 
 using namespace std;
 
-/* wait 0.15 seconds between update cycles by default */
-const unsigned SLEEP_DEFAULT = 1000*150;
-
-/* Default settings for the chat server */
-//const int SERVER_PORT = 7005;
-//const char* const DATABASE_HOST = "www.runevillage.com";
-
-/* HTML pages relative to DATABASE_HOST */
-// TODO: softcode this!
-//const char* const LOGIN_PAGE = "/ThePub/authenticate.php";
-//const char* const CONFIG_PAGE = "/ThePub/chatconfig.php";
-
-ChatServer* g_pServer = NULL;
-
-/* statistics */
-unsigned g_iBytesSent = 0;
-unsigned g_iBytesRead = 0;
-unsigned g_iBytesBroadcast = 0;
-
 /* TODO: stuff most of this logic into a ::Start routine. */
-ChatServer::ChatServer( const char *config ) : m_pListener(NULL)
+ChatServer::ChatServer( Config *cfg ) : m_pListener(NULL), m_pConfig(cfg)
 {
-	// direct global error handling callbacks to this server
-	g_pServer = this;
+	unsigned short iPort = m_pConfig->GetInt( "ServerPort" );
 
-	if( !m_Config.Load(config) )
-	{
-		Logger::SystemLog( "Failed to load configuration! Server can't start..." );
-		return;
-	}
+	m_pListener = new SocketListener;
+	m_pListener->Connect( iPort );
 
-	int iPort = m_Config.GetInt( "ServerPort" );
+	m_pConnector = new DatabaseConnector( m_pConfig );
 
-	if( iPort != 0 )
-	{
-		m_pListener = new SocketListener;
-		m_pListener->Connect( iPort );
-	}
-
-	const char* DATABASE_HOST 	= m_Config.Get( "DatabaseHost" );
-	const char* LOGIN_PAGE 		= m_Config.Get( "LoginPage" );
-	const char* CONFIG_PAGE		= m_Config.Get( "ConfigPage" );
-
-	if( !DATABASE_HOST || !LOGIN_PAGE || !CONFIG_PAGE )
-	{
-		Logger::SystemLog( "Could not find necessary database config!" );
-		return;
-	}
-
-	m_pConnector = new DatabaseConnector( DATABASE_HOST, LOGIN_PAGE, CONFIG_PAGE );
-
-	const char* EXTRA_ROOMS		= m_Config.Get( "AdditionalRooms" );
+	// extra rooms are nice, but not vital
+	const char* EXTRA_ROOMS	= m_pConfig->Get( "AdditionalRooms", true );
 
 	if( EXTRA_ROOMS )
 	{
@@ -80,8 +39,18 @@ ChatServer::ChatServer( const char *config ) : m_pListener(NULL)
 		StringUtil::Split( EXTRA_ROOMS, vsRooms, ',' );
 
 		for( unsigned i = 0; i < vsRooms.size(); i++ )
+		{
+			Logger::DebugLog( "Adding room: %s", vsRooms[i].c_str() );
 			m_Rooms.AddRoom( vsRooms[i] );
+		}
 	}
+
+	// set up user level information
+	const char* sModLevels = m_pConfig->Get( "ModLevels" );
+	const char* sBanLevel = m_pConfig->Get( "BanLevel" );
+
+	m_sModLevels.assign( sModLevels );
+	m_cBanLevel = sBanLevel[0];
 }
 
 ChatServer::~ChatServer()
@@ -99,12 +68,12 @@ void ChatServer::AddUser( unsigned iSocket )
 	User *pUser = new User( iSocket );
 	m_Users.push_back( pUser );
 
-	Logger::SystemLog( "Added new client on socket %d, from IP %s", iSocket, pUser->GetIP() );
+	Logger::DebugLog( "Added new client on socket %d, from IP %s", iSocket, pUser->GetIP() );
 }
 
 void ChatServer::RemoveUser( User *user )
 {
-	Logger::SystemLog( "Client (%p) at IP %s removed.", user, user->GetIP() );
+	Logger::DebugLog( "Client (%p) at IP %s removed.", user, user->GetIP() );
 
 	// broadcast a quitting message if they were logged in
 	if( user->IsLoggedIn() )
@@ -128,11 +97,15 @@ void ChatServer::MainLoop()
 	if( m_pListener == NULL )
 		return;
 
-	/* allow sleep time as a configuration, but provide a default */
-	unsigned iSleepTime = m_Config.GetInt( "SleepMicroseconds" );
-	const unsigned SLEEP_MICROSECONDS = (iSleepTime != 0) ? iSleepTime : 150*1000;
+	// set some optional configuration: SleepTime is the amount of usecs to wait
+	// between updates, LagSpikeTime is the amount of usecs required to pass within
+	// an update to be considered a spike (which results in a message to stdout).
+
+	const unsigned iSleepTime = m_pConfig->GetInt( "SleepTime", true, 1000*150 );	// 150 ms
+	const unsigned iLagSpikeTime = m_pConfig->GetInt( "LagSpikeTime", true, 250 );	// 250 us
 
 	struct timeval tv_start, tv_end;
+
 	while( true )
 	{
 		gettimeofday( &tv_start, NULL );
@@ -173,7 +146,7 @@ void ChatServer::MainLoop()
 				CheckIdleStatus( user );
 
 			// if this user is dead, erase/reposition the iterator
-			// and properly remove the user from their other stuff.
+			// and properly remove the user from rooms, etc.
 			if( user->IsDead() )
 			{
 				it = m_Users.erase( it );
@@ -185,15 +158,18 @@ void ChatServer::MainLoop()
 		// flush all the logs to disk on update
 		Logger::Flush();
 
-		gettimeofday( &tv_end, NULL );
 
-		unsigned iDiff = 1000000 * (tv_end.tv_sec-tv_start.tv_sec) + (tv_end.tv_usec-tv_start.tv_usec);
+		// run some basic lag-detection logic
+		{
+			gettimeofday( &tv_end, NULL );
+			unsigned iDiff = 1000000 * (tv_end.tv_sec-tv_start.tv_sec) + (tv_end.tv_usec-tv_start.tv_usec);
 
-		if( iDiff >= 150 )
-			printf( "[MainLoop took %u usecs to execute.]\n", iDiff );
+			if( iDiff >= iLagSpikeTime )
+				Logger::DebugLog( "[MainLoop took %u usecs to execute.]\n", iDiff );
+		}
 
 		// give a bunch of time to other processes
-		usleep( SLEEP_MICROSECONDS );
+		usleep( iSleepTime );
 	}
 
 	Logger::SystemLog( "The impossible happened! :(" );
@@ -203,11 +179,12 @@ void ChatServer::UpdateUser( User *user )
 {
 	unsigned iPos = 0;
 
-	memset( m_sReadBuffer, 0, BUFFER_SIZE );
-
 	// no new data to operate on, or an error occurred
 	if( (iPos = user->Read(m_sReadBuffer, BUFFER_SIZE)) <= 0 )
 		return;
+
+	// delimit the data we got (faster than a memset)
+	m_sReadBuffer[iPos] = '\0';
 
 	// the vast majority of cases won't need split, so we
 	// can optimize the branching logic around that case.
@@ -232,7 +209,7 @@ void ChatServer::UpdateUser( User *user )
 void ChatServer::HandleUserPacket( User *user, const std::string &buf )
 {
 	// create user-specific log prefix, e.g. "Fire_Adept@127.0.0.1"
-	string sUserPrefix = StringUtil::Format( "%s@%s", user->GetName().c_str(), user->GetIP() );
+	const string sUserPrefix = StringUtil::Format( "%s@%s", user->GetName().c_str(), user->GetIP() );
 
 	// try to make a packet out of the data we've gotten
 	ChatPacket packet( buf );
@@ -240,8 +217,8 @@ void ChatServer::HandleUserPacket( User *user, const std::string &buf )
 	// if the packet can't be parsed, drop the client.
 	if( !packet.IsValid() )
 	{
-		Logger::SystemLog( "invalid packet from %s! %s", sUserPrefix.c_str(), buf.c_str() );
-		Logger::SystemLog( "packet data: %s", buf.c_str() );
+		Logger::DebugLog( "invalid packet from %s! %s", sUserPrefix.c_str(), buf.c_str() );
+		Logger::DebugLog( "packet data: %s", buf.c_str() );
 		user->Kill();
 		return;
 	}
@@ -301,6 +278,7 @@ void ChatServer::CheckIdleStatus( User *user )
 void ChatServer::HandleLoginState( User *user )
 {
 	/* dispatches messages to the user and/or server, as appropriate */
+
 	switch( user->GetLoginState() )
 	{
 	case LOGIN_ERROR:
@@ -314,6 +292,18 @@ void ChatServer::HandleLoginState( User *user )
 		break;
 	case LOGIN_SUCCESS:
 	{
+		// if this user is banned, send them a message and cut the connection
+		if( user->GetLevel() == m_cBanLevel )
+		{
+			user->Write( ChatPacket(USER_BAN, BLANK, BLANK).ToString() );
+			user->Kill();
+			return;
+		}
+
+		// if this user has a mod level, set them as mod
+		if( m_sModLevels.find(user->GetLevel()) != string::npos )
+			user->SetMod( true );
+
 		// write 'accepted' response
 		user->Write( ChatPacket(ACCESS_GRANTED).ToString() );
 
@@ -336,9 +326,10 @@ void ChatServer::HandleLoginState( User *user )
 
 		break;
 	}
+	// these states aren't handled here and should never be reached
 	case LOGIN_NONE:
 	case LOGIN_CHECKING:
-		Logger::SystemLog( "Aaaaah! Shouldn't be here! State %i", user->GetLoginState() );
+		Logger::SystemLog( "I'a Cthulhu! Cthulhu fhtagn! State %i", user->GetLoginState() );
 		break;
 	}
 
@@ -349,6 +340,8 @@ void ChatServer::HandleLoginState( User *user )
 
 User* ChatServer::GetUserByName( const std::string &sName ) const
 {
+	// XXX: always a linear search. Can we improve on that?
+	// (probably not, we don't have a high enough user load to justify it)
 	for( list<User*>::const_iterator it = m_Users.begin(); it != m_Users.end(); it++ )
 		if( !StringUtil::CompareNoCase((*it)->GetName(), sName) )
 			return (*it);
@@ -359,29 +352,18 @@ User* ChatServer::GetUserByName( const std::string &sName ) const
 
 std::string ChatServer::GetUserState( const User *user ) const
 {
-	std::string ret;
-	ret.assign( m_Rooms.GetName(user->GetRoom()) );
-	ret.push_back( '|' );
+	const string sRoom = m_Rooms.GetName( user->GetRoom() );
+	const char cLevel = user->GetLevel();
+	const char cMuted = user->IsMuted() ? 'M' : '_';
+	string sIdle( BLANK ), sAway( BLANK );
 
-	// display user level.
-	ret.push_back( user->GetLevel() );
-
-	// display muted status (M for muted, _ for not)
-	ret.push_back( user->IsMuted() ? 'M' : '_' );
-
-	// display idle status, including time if needed
 	if( user->IsIdle() )
-		ret.append( StringUtil::Format( "i%04u", user->GetIdleMinutes()) );
-	else
-		ret.push_back( '_' );
-
-	// display away status, appending the message if away
+		sIdle = StringUtil::Format( "%i04u", user->GetIdleMinutes() );
 	if( user->IsAway() )
-		ret.append( "a%s", user->GetMessage().c_str() );
-	else
-		ret.push_back( '_' );
+		sAway = StringUtil::Format( "a%s", user->GetMessage().c_str() );
 
-	return ret;
+	return StringUtil::Format( "%s|%c%c%s%s", sRoom.c_str(),
+		cLevel, cMuted, sIdle.c_str(), sAway.c_str() );
 }
 
 void ChatServer::Broadcast( const ChatPacket &packet )
@@ -400,7 +382,6 @@ void ChatServer::Broadcast( const ChatPacket &packet )
 			continue;
 
 		user->Write( sPacketData );
-		g_iBytesBroadcast += sPacketData.length();
 	}
 }
 
@@ -419,40 +400,21 @@ void ChatServer::WallMessage( const std::string &sMessage )
 	}
 }
 
-/* On caught signal, add a message and flush logs before exiting. */
-static void sig_handler( int signum )
-{
-	Logger::SystemLog( "Caught code %d (%s): exiting.", signum, strsignal(signum) );
-
-	if( g_pServer )
-	{
-		// cleanly remove all users
-		list<User*>::const_iterator it = g_pServer->GetUserList()->begin();
-
-		for( ; it != g_pServer->GetUserList()->end(); it++ )
-		{
-			ChatPacket kill( USER_PART, (*it)->GetName(), "_" );
-			g_pServer->Broadcast( kill );
-		}
-	}
-
-	exit(signum);
-}
-
-int main( int argc, char **argv )
-{
-	// ignore SIGPIPE. we don't want the program stopping because
-	// a client disconnected in an unexpected way.
-	sigignore( SIGPIPE );
-
-	// intercept these normally-fatal signals with our own version, 
-	// which will flush all of the server logs before exiting.
-	signal( SIGINT, sig_handler );
-	signal( SIGTERM, sig_handler );
-	signal( SIGSEGV, sig_handler );
-	signal( SIGABRT, sig_handler );
-
-	ChatServer server( "config.txt" );
-	server.MainLoop();
-	return 0;
-}
+/* 
+ * Copyright (c) 2009-10 Mark Cannon ("Vyhd")
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  
+ * 02110-1301, USA.
+ */

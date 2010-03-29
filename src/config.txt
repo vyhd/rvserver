@@ -1,12 +1,23 @@
+// the port this server listens on
 ServerPort=7005
 
+// can be an IP; just needs to be resolveable
 DatabaseHost=www.runevillage.com
 
 // must be relative to DatabaseHost
 LoginPage=/ThePub/authenticate.php
 ConfigPage=/ThePub/chatconfig.php
+BanPage=/ThePub/chatban.php
 
+// comma-delimited, e.g. "Room A,Room B"
 AdditionalRooms=Spam Room
 
-// optional; determines sleep time between updates
-SleepMicroseconds=10
+// The single-character levels used by the server (no seperators)
+ModLevels=ACcbf!
+BanLevel=d
+
+// optional; determines sleep time (in microseconds) between updates
+SleepTime=150000
+
+// optional; any updates taking longer than this report update time on stdout
+LagSpikeTime=250

@@ -2,7 +2,7 @@ bin_PROGRAMS = rvserver
 
 noinst_PROGRAMS = rvserver
 
-AM_CXXFLAGS = -ggdb -Wall -pedantic
+AM_CXXFLAGS = -ggdb -fno-inline -Wall -pedantic
 
 # some hacky stuff to get a build version auto-updating
 .PHONY: build_ver
@@ -53,7 +53,7 @@ Handlers = \
 
 # Compile handlers last due to deps
 rvserver_SOURCES = $(Network) $(Model) $(Logger) $(Util) $(Packet) \
-	ChatServer.cpp ChatServer.h $(Handlers)
+	ChatServer.cpp ChatServer.h Main.cpp $(Handlers)
 
 # Needed for thread support.
 rvserver_LDFLAGS = -lpthread

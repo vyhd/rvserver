@@ -69,7 +69,8 @@ public:
 
 	char GetLevel() const	{ return m_cLevel; }
 	void SetLevel( char c )	{ m_cLevel = c; }
-	bool IsMod() const;
+	bool IsMod() const	{ return m_bIsMod; }
+	void SetMod( bool b )	{ m_bIsMod = b; }
 
 	Room* GetRoom() const	{ return m_pRoom; }
 
@@ -114,7 +115,7 @@ private:
 	/* basic user details */
 	std::string m_sName, m_sPrefs;
 	char m_cLevel;
-	bool m_bLoggedIn, m_bMuted;
+	bool m_bLoggedIn, m_bMuted, m_bIsMod;
 
 	unsigned m_iLastIdleMinute;
 	time_t m_LastActive;
@@ -123,3 +124,22 @@ private:
 };
 
 #endif // USER_H
+
+/* 
+ * Copyright (c) 2009-10 Mark Cannon ("Vyhd")
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  
+ * 02110-1301, USA.
+ */

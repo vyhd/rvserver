@@ -41,7 +41,7 @@ bool Socket::Open( const std::string &ip, int port )
 
 	if( m_iSocket < 0 )
 	{
-		Logger::SystemLog( "MakeSocket: Failed to open socket!\n" );
+		Logger::SystemLog( "Open: Failed to open socket!\n" );
 		return false;
 	}
 
@@ -81,7 +81,7 @@ int Socket::Read( char *buffer, unsigned len, bool bDontWait )
 		if( errno == EAGAIN || errno == EWOULDBLOCK )
 			return 0;
 
-		Logger::SystemLog( "Read( %u, %p, %u, %d ) failed: %i (%s)",
+		Logger::DebugLog( "Read( %u, %p, %u, %d ) failed: %i (%s)",
 			m_iSocket, buffer, len, int(bDontWait), errno, strerror(errno) );
 
 		return -1;
@@ -101,7 +101,7 @@ int Socket::Write( const char *buffer, unsigned len, bool bDontWait )
 		if( errno == EAGAIN || errno == EWOULDBLOCK )
 			return 0;
 
-		Logger::SystemLog( "Write( %u, %p, %u, %d ) failed: %i (%s)",
+		Logger::DebugLog( "Write( %u, %p, %u, %d ) failed: %i (%s)",
 			m_iSocket, buffer, len, int(bDontWait), errno, strerror(errno) );
 
 		return -1;	
@@ -114,3 +114,22 @@ int Socket::Write( const std::string &str, bool bDontWait )
 {
 	return Write( str.c_str(), str.length(), bDontWait );
 }
+
+/* 
+ * Copyright (c) 2009-10 Mark Cannon ("Vyhd")
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  
+ * 02110-1301, USA.
+ */

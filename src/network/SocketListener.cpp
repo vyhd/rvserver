@@ -15,13 +15,12 @@
 
 SocketListener::SocketListener()
 {
-	Logger::SystemLog( "SocketListener::SocketListener" );
-	// this space left blank
+	m_iServerSocket = -1;
 }
 
 SocketListener::~SocketListener()
 {
-	Logger::SystemLog( "SocketListener::~SocketListener" );
+	Logger::DebugLog( "SocketListener::~SocketListener" );
 	Disconnect();
 }
 
@@ -31,11 +30,12 @@ void SocketListener::Disconnect()
 	// if it is, we'll close; if not, we ignore the error.
 	shutdown( m_iServerSocket, SHUT_RDWR );
 	close( m_iServerSocket );
+	m_iServerSocket = -1;
 }
 
 bool SocketListener::Connect( int iPort )
 {
-	Logger::SystemLog( "SocketListener::Connect( %d )", iPort );
+	Logger::DebugLog( "SocketListener::Connect( %d )", iPort );
 
 	// Let Listen() know what port we're running on.
 	m_iPort = iPort;
@@ -105,3 +105,22 @@ int SocketListener::GetConnection()
 	// we have a valid socket!
 	return iClientSocket;
 }
+
+/* 
+ * Copyright (c) 2009-10 Mark Cannon ("Vyhd")
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  
+ * 02110-1301, USA.
+ */
