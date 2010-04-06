@@ -14,10 +14,6 @@
 // want to be responsive when we do have something to process.
 const unsigned SLEEP_MICROSECONDS = 25*1000;
 
-/* Set this configuration if none could be found. Better than
- * causing the client to throw an exception, I think... */
-const char* DEFAULT_PREFS = "theme|Classic|red|0|green|0|blue|0|freezeChat|false|ignoreColors|false|timeStamp|false|beep|true|bleep|true|audio|true";
-
 using namespace std;
 using namespace StringUtil;
 
@@ -45,10 +41,11 @@ DatabaseWorker::DatabaseWorker( const Config *cfg )
 	const char* LOGIN_PAGE 		= cfg->Get( "LoginPage" );
 	const char* CONFIG_PAGE		= cfg->Get( "ConfigPage" );
 	const char* BAN_PAGE		= cfg->Get( "BanPage" );
+	const char* DEFAULT_CONFIG	= cfg->Get( "DefaultConfig" );
 
-	if( !DATABASE_HOST || !LOGIN_PAGE || !CONFIG_PAGE || !BAN_PAGE )
+	if( !DATABASE_HOST || !LOGIN_PAGE || !CONFIG_PAGE || !BAN_PAGE || !DEFAULT_CONFIG )
 	{
-		Logger::SystemLog( "Could not find necessary database config!" );
+		LOG->System( "Could not find necessary database config!" );
 		return;
 	}
 
@@ -56,6 +53,7 @@ DatabaseWorker::DatabaseWorker( const Config *cfg )
 	m_sAuthPage.assign( LOGIN_PAGE );
 	m_sConfigPage.assign( CONFIG_PAGE );
 	m_sBanPage.assign( BAN_PAGE );
+	m_sDefaultConfig.assign( DEFAULT_CONFIG );
 
 	m_bRunning = true;
 	m_Thread.Start( &Start, this );
@@ -66,23 +64,37 @@ DatabaseWorker::~DatabaseWorker()
 	// stop the worker thread
 	Stop();
 
-	// remove all of the unhandled requests
+	while( m_Requests.size() )
+		delete PopRequest();
+}
+
+void DatabaseWorker::AddRequest( Request *req )
+{
+	m_QueueLock.Lock();
+	m_Requests.push( req );
+	LOG->Debug( "Pushed request (%i,%u,%s)", req->type, req->user, req->data.c_str() );
+	m_QueueLock.Unlock();
+}
+
+Request* DatabaseWorker::PopRequest()
+{
 	m_QueueLock.Lock();
 
-	while( m_Requests.size() )
-	{
-		Request *req = m_Requests.front();
-		m_Requests.pop();
-		delete req;
-	}
+	LOG->Debug( "Had %u...", m_Requests.size() );
+
+	Request *ret = m_Requests.front();
+	m_Requests.pop();
+
+	LOG->Debug( "Now have %u.", m_Requests.size() );
 
 	m_QueueLock.Unlock();
+	return ret;
 }
 
 bool DatabaseWorker::Connect()
 {
 	if( !m_Socket.OpenHost(m_sServer, 80) )
-		Logger::SystemLog( "Failed to connect to %s!", m_sServer.c_str() );
+		LOG->System( "Failed to connect to %s!", m_sServer.c_str() );
 
 	return m_Socket.IsOpen();
 }
@@ -102,28 +114,24 @@ void DatabaseWorker::Login( User *user, const string &passwd )
 {
 	user->SetLoginState( LOGIN_CHECKING );
 
-	Request *req = new Request( REQ_LOGIN, user, passwd );
-
-	m_QueueLock.Lock();
-	m_Requests.push( req );
-	m_QueueLock.Unlock();
+	AddRequest( new Request(REQ_LOGIN, user, passwd) );
 }
 
 void DatabaseWorker::Ban( const string &username )
 {
-	// TODO
+	AddRequest( new Request(REQ_BAN, NULL, username) );
 }
 
 void DatabaseWorker::Unban( const string &username )
 {
-	// TODO
+	AddRequest( new Request(REQ_UNBAN, NULL, username) );
 }
 
 void DatabaseWorker::SavePrefs( const User *user )
 {
-	Logger::DebugLog( "SavePrefs( %p )", user );
+	LOG->Debug( "SavePrefs( %p )", user );
 
-	/* Form request here; the user needs to be reaped ASAP,
+	/* Form the request here; the user should be reaped ASAP,
 	 * but we want to save the preferences on our own time. */
 
 	const string sUsername = URLEncoding::Encode( user->GetName() );
@@ -134,11 +142,7 @@ void DatabaseWorker::SavePrefs( const User *user )
 	const string sMessage = Format( "username=%s&chatconfig=%s",
 		sUsername.c_str(), sPrefs.c_str() );
 
-	Request *req = new Request( REQ_SAVE_PREFS, NULL, sMessage );
-
-	m_QueueLock.Lock();
-	m_Requests.push( req );
-	m_QueueLock.Unlock();
+	AddRequest( new Request(REQ_SAVE_PREFS, NULL, sMessage) );
 }
 
 void DatabaseWorker::HandleRequests()
@@ -149,10 +153,9 @@ void DatabaseWorker::HandleRequests()
 		while( m_Requests.empty() )
 			usleep( SLEEP_MICROSECONDS );
 
-		m_QueueLock.Lock();
-		Request *req = m_Requests.front();
-		m_Requests.pop();
-		m_QueueLock.Unlock();
+		Request *req = PopRequest();
+
+		LOG->Debug( "Popped request: (%u, %p, %s)", req->type, req->user, req->data.c_str() );
 
 		switch( req->type )
 		{
@@ -165,10 +168,10 @@ void DatabaseWorker::HandleRequests()
 		case REQ_UNBAN:
 			DoBan( req, false );	break;
 		default:
-			Logger::SystemLog( "??? Unknown DBWorker request %d", req->type );
+			LOG->System( "??? Unknown DBWorker request %d", req->type );
 		}
 
-		Logger::DebugLog( "Request( %i, %p, %s ) handled",
+		LOG->Debug( "Request( %i, %p, %s ) handled",
 			req->type, req->user, 
 			(req->type == REQ_LOGIN ? "<censored>" : req->data.c_str())
 		);
@@ -194,7 +197,7 @@ void DatabaseWorker::DoLogin( Request *req )
 
 	if( response_buf == NULL )
 	{
-		Logger::SystemLog( "POST for user %s failed!", user->GetName().c_str() );
+		LOG->System( "POST for user %s failed!", user->GetName().c_str() );
 		user->SetLoginState( LOGIN_SERVER_DOWN );
 		return;
 	}
@@ -229,17 +232,19 @@ void DatabaseWorker::DoLogin( Request *req )
 		else if( !code.compare("LOGIN_ERROR_ATTEMPTS") )
 			state = LOGIN_ERROR_ATTEMPTS;
 		else
-			Logger::SystemLog( "Unknown login response: %s", code.c_str() );
+			LOG->System( "Unknown login response: %s", code.c_str() );
 
-		// if we have us some success, set the user's level (char after delim)
+		// if the login is successful, set the user's level indicator
+		// (which is the first character after the delimiter) and
+		// load their chat preferences
 		if( state == LOGIN_SUCCESS )
+		{
 			user->SetLevel( response[delim+1] );
+			DoLoadPrefs( user );
+		}
 	}
 
-	// now, get the user's preferences and save them to the user
-	DoLoadPrefs( user );
-
-	// tell the main thread this user is done
+	// tell the main thread this user is done being checked
 	user->SetLoginState( state );
 }
 
@@ -250,38 +255,36 @@ void DatabaseWorker::DoLoadPrefs( User *user )
 
 	if( response_buf == NULL )
 	{
-		Logger::SystemLog( "LoadPrefs failed! Using default for %s", user->GetName().c_str() );
-		user->SetPrefs( DEFAULT_PREFS );
+		LOG->System( "LoadPrefs for %s failed! Insufficient permissions?", user->GetName().c_str() );
+		user->SetPrefs( m_sDefaultConfig );
 		return;
 	}
 
+	const string response( response_buf );
+
+	unsigned start = string::npos, end = string::npos;
+
+	// find the preference string and assign it to the user.
+	// '\r' finds the first part of the ending "\r\n".
+	start = response.find( "theme" );
+	end = response.find_first_of( '\r', start );
+
+	if( start == string::npos || end == string::npos )
 	{
-		const string response( response_buf );
+		LOG->System( "LoadPrefs failed! Using default "
+			"for %s", user->GetName().c_str() );
 
-		unsigned start = string::npos, end = string::npos;
-
-		// find the preference string and assign it to the user.
-		// '\r' finds the first part of the ending "\r\n".
-		start = response.find( "theme" );
-		end = response.find_first_of( '\r', start );
-
-		if( start == string::npos || end == string::npos )
-		{
-			Logger::SystemLog( "LoadPrefs failed! Using default "
-				"for %s", user->GetName().c_str() );
-
-			user->SetPrefs( DEFAULT_PREFS );
-			return;
-		}
-
-		const string prefs = response.substr( start, (end-start) );
-		user->SetPrefs( prefs );
+		user->SetPrefs( m_sDefaultConfig );
+		return;
 	}
+
+	const string prefs = response.substr( start, (end-start) );
+	user->SetPrefs( prefs );
 }
 
 void DatabaseWorker::DoSavePrefs( Request *req )
 {
-	Logger::DebugLog( "DatabaseWorker::DoSavePrefs( %s )", req->data.c_str() );
+	LOG->Debug( "DatabaseWorker::DoSavePrefs( %s )", req->data.c_str() );
 	// This was already built in the SavePrefs call. Just send it.
 	SendPOST( m_sConfigPage, req->data );
 
@@ -300,7 +303,7 @@ const char* DatabaseWorker::SendPOST( const string &sForm, const string &params 
 	if( !Connect() )
 		return NULL;
 
-	Logger::DebugLog( "POST sent..." );
+	LOG->Debug( "POST sent..." );
 
 	/* Create a HTTP 1.1 POST packet and send it to the server */
 	string msg;
@@ -317,7 +320,7 @@ const char* DatabaseWorker::SendPOST( const string &sForm, const string &params 
 	// shut up, gcc
 	if( iSent != (int)msg.length() )
 	{
-		Logger::DebugLog( "Write failed: returned %i/%u (%s)", iSent,
+		LOG->Debug( "Write failed: returned %i/%u (%s)", iSent,
 			msg.length(), strerror(errno) );
 
 		return NULL;
@@ -328,7 +331,7 @@ const char* DatabaseWorker::SendPOST( const string &sForm, const string &params 
 	m_Socket.Close();
 	m_sBuffer[iRead] = '\0';
 
-	Logger::DebugLog( "Received response to POST." );
+	LOG->Debug( "Received response to POST." );
 
 	// return a const pointer to the buffer
 	return m_sBuffer;

@@ -16,7 +16,7 @@ public:
 
 	/* Returns this key's entry, NULL if none exists. If
 	 * bOptional is false, log an error and abort. */
-	const char* Get( const char *key, bool bOptional = false ) const;
+	const char* Get( const char *key, bool bOptional = false, const char *def = 0 ) const;
 
 	/* returns a specialized value; if not found, and marked optional,
 	 * then we'll fall back on the default value given in the argument. */

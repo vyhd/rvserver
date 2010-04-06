@@ -25,7 +25,7 @@ bool Socket::OpenHost( const std::string &host, int port )
 
 	if( entry == NULL )
 	{
-		Logger::SystemLog( "Lookup of \"%s\" failed: %u\n", host.c_str(), h_errno );
+		LOG->System( "Lookup of \"%s\" failed: %u\n", host.c_str(), h_errno );
 		return false;
 	}
 
@@ -41,7 +41,7 @@ bool Socket::Open( const std::string &ip, int port )
 
 	if( m_iSocket < 0 )
 	{
-		Logger::SystemLog( "Open: Failed to open socket!\n" );
+		LOG->System( "Open: Failed to open socket!\n" );
 		return false;
 	}
 
@@ -81,7 +81,7 @@ int Socket::Read( char *buffer, unsigned len, bool bDontWait )
 		if( errno == EAGAIN || errno == EWOULDBLOCK )
 			return 0;
 
-		Logger::DebugLog( "Read( %u, %p, %u, %d ) failed: %i (%s)",
+		LOG->Debug( "Read( %u, %p, %u, %d ) failed: %i (%s)",
 			m_iSocket, buffer, len, int(bDontWait), errno, strerror(errno) );
 
 		return -1;
@@ -101,7 +101,7 @@ int Socket::Write( const char *buffer, unsigned len, bool bDontWait )
 		if( errno == EAGAIN || errno == EWOULDBLOCK )
 			return 0;
 
-		Logger::DebugLog( "Write( %u, %p, %u, %d ) failed: %i (%s)",
+		LOG->Debug( "Write( %u, %p, %u, %d ) failed: %i (%s)",
 			m_iSocket, buffer, len, int(bDontWait), errno, strerror(errno) );
 
 		return -1;	

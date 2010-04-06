@@ -20,7 +20,7 @@ SocketListener::SocketListener()
 
 SocketListener::~SocketListener()
 {
-	Logger::DebugLog( "SocketListener::~SocketListener" );
+	LOG->Debug( "SocketListener::~SocketListener" );
 	Disconnect();
 }
 
@@ -35,7 +35,7 @@ void SocketListener::Disconnect()
 
 bool SocketListener::Connect( int iPort )
 {
-	Logger::DebugLog( "SocketListener::Connect( %d )", iPort );
+	LOG->Debug( "SocketListener::Connect( %d )", iPort );
 
 	// Let Listen() know what port we're running on.
 	m_iPort = iPort;
@@ -43,7 +43,7 @@ bool SocketListener::Connect( int iPort )
 	// Create the server socket.
 	if( ( m_iServerSocket = socket( PF_INET, SOCK_STREAM, IPPROTO_TCP ) ) < 0 )
 	{
-		Logger::SystemLog( "Error creating ServerSocket: %s\n", strerror(errno) );
+		LOG->System( "Error creating ServerSocket: %s\n", strerror(errno) );
 		return false;
 	}
 
@@ -68,14 +68,14 @@ bool SocketListener::Connect( int iPort )
 	// Bind the ServerSocket
 	if( bind( m_iServerSocket, (sockaddr *)&m_SockAddr, sizeof( m_SockAddr ) ) < 0 )
 	{
-		Logger::SystemLog( "Error binding ServerSocket: %s\n", strerror(errno) );
+		LOG->System( "Error binding ServerSocket: %s\n", strerror(errno) );
 		return false;
 	}
 	
 	// Set the ServerSocket to listen for a connection
 	if( listen( m_iServerSocket, 5 ) < 0 )
 	{
-		Logger::SystemLog( "Error listening for users: %s\n", strerror(errno) );
+		LOG->System( "Error listening for users: %s\n", strerror(errno) );
 		return false;
 	}
 
@@ -96,7 +96,7 @@ int SocketListener::GetConnection()
 			return -1;
 
 		// unexpected: log a warning, then continue
-		Logger::SystemLog( "Error accepting %s on port %d: %s\n", inet_ntoa(ClientData.sin_addr),
+		LOG->System( "Error accepting %s on port %d: %s\n", inet_ntoa(ClientData.sin_addr),
 			m_iPort, strerror(errno) );
 
 		return -1;

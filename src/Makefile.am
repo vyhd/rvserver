@@ -33,6 +33,7 @@ Packet = packet/ChatPacket.cpp packet/ChatPacket.h \
 Util = util/libb64/cencode.c util/libb64/cencode.h \
 	util/Base64.cpp util/Base64.h \
 	util/Config.cpp util/Config.h \
+	util/FileUtil.cpp util/FileUtil.h \
 	util/StringUtil.cpp util/StringUtil.h \
 	util/Thread.cpp util/Thread.h \
 	util/URLEncoding.cpp util/URLEncoding.h

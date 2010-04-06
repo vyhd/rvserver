@@ -1,22 +1,21 @@
-#include <errno.h>
+#include <cerrno>
+#include <cstring>
 #include <sys/ptrace.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 
 #include "Thread.h"
+#include "logger/Logger.h"
 
 /* compatibility hack */
 #define gettid() syscall(SYS_gettid)
-
-/* removed until we actually implement this one */
-#define LOG(x,y) {}
 
 void Thread::Start( void*(*CreateFn)(void *), void *data )
 {
 	int ret = pthread_create( &m_Thread, NULL, CreateFn, data );
 	if( ret )
 	{
-		LOG( "pthread_create: %s", strerror(errno) );
+		LOG->Debug( "pthread_create: %s", strerror(errno) );
 	}
 }
 
@@ -26,7 +25,7 @@ void Thread::Stop()
 	int ret = pthread_join( m_Thread, &val );
 	if( ret )
 	{
-		LOG( "pthread_join: %s", strerror(errno) );
+		LOG->Debug( "pthread_join: %s", strerror(errno) );
 	}
 }
 
@@ -35,7 +34,7 @@ void Thread::Pause()
 	int ret = ptrace( PTRACE_ATTACH, int(m_iID), NULL, NULL );
 	if( ret == -1 )
 	{
-		LOG( "ptrace failed: %s\n", strerror(errno) );
+		LOG->Debug( "ptrace failed: %s\n", strerror(errno) );
 	}
 
 	m_bPaused = true;
@@ -46,7 +45,7 @@ void Thread::Continue()
 	int ret = ptrace( PTRACE_DETACH, int(m_iID), NULL, NULL );
 	if( ret == -1 )
 	{
-		LOG( "ptrace failed: %s\n", strerror(errno) );
+		LOG->Debug( "ptrace failed: %s\n", strerror(errno) );
 	}
 
 	m_bPaused = false;

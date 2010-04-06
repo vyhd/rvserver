@@ -6,9 +6,6 @@
 #include <set>
 #include <string>
 
-/* Defined here so User doesn't need to pull in RoomList. */
-const std::string DEFAULT_ROOM = "RV Chat";
-
 class ChatPacket;
 class User;
 

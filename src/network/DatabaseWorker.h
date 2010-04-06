@@ -41,6 +41,10 @@ private:
 	bool Connect();
 	void Disconnect();
 
+	// thread-safe calls for request manipulation
+	void AddRequest( Request *req );
+	Request* PopRequest();
+
 	// internal handlers for requests
 	void DoLogin( Request *req );
 	void DoSavePrefs( Request *req );
@@ -56,7 +60,13 @@ private:
 	static void *Start( void *p ) { ((DatabaseWorker*)p)->HandleRequests(); return NULL; }
 	void HandleRequests();
 
+	// paths for the POST recipients we use for verification
 	std::string m_sServer, m_sAuthPage, m_sConfigPage, m_sBanPage;
+
+	// default configuration to be loaded if the server can't find any
+	std::string m_sDefaultConfig;
+
+	// 
 
 	/* requests that are handled by the request thread */
 	std::queue<Request*> m_Requests;

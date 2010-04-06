@@ -2,6 +2,7 @@
 #include <cctype>
 #include <cstdlib>
 #include <vector>	// for PacketUtil::Split
+#include <string>	// for memset
 
 #include <unistd.h>
 #include <sys/time.h>	// for timestamping
@@ -21,7 +22,7 @@
 using namespace std;
 
 /* TODO: stuff most of this logic into a ::Start routine. */
-ChatServer::ChatServer( Config *cfg ) : m_pListener(NULL), m_pConfig(cfg)
+ChatServer::ChatServer( Config *cfg ) : m_pListener(NULL), m_pConfig(cfg), m_Rooms(cfg)
 {
 	unsigned short iPort = m_pConfig->GetInt( "ServerPort" );
 
@@ -40,7 +41,7 @@ ChatServer::ChatServer( Config *cfg ) : m_pListener(NULL), m_pConfig(cfg)
 
 		for( unsigned i = 0; i < vsRooms.size(); i++ )
 		{
-			Logger::DebugLog( "Adding room: %s", vsRooms[i].c_str() );
+			LOG->Debug( "Adding room: %s", vsRooms[i].c_str() );
 			m_Rooms.AddRoom( vsRooms[i] );
 		}
 	}
@@ -68,12 +69,12 @@ void ChatServer::AddUser( unsigned iSocket )
 	User *pUser = new User( iSocket );
 	m_Users.push_back( pUser );
 
-	Logger::DebugLog( "Added new client on socket %d, from IP %s", iSocket, pUser->GetIP() );
+	LOG->Debug( "Added new client on socket %d, from IP %s", iSocket, pUser->GetIP() );
 }
 
 void ChatServer::RemoveUser( User *user )
 {
-	Logger::DebugLog( "Client (%p) at IP %s removed.", user, user->GetIP() );
+	LOG->Debug( "Client (%p) at IP %s removed.", user, user->GetIP() );
 
 	// broadcast a quitting message if they were logged in
 	if( user->IsLoggedIn() )
@@ -156,8 +157,7 @@ void ChatServer::MainLoop()
 		}
 
 		// flush all the logs to disk on update
-		Logger::Flush();
-
+		LOG->Flush();
 
 		// run some basic lag-detection logic
 		{
@@ -165,26 +165,25 @@ void ChatServer::MainLoop()
 			unsigned iDiff = 1000000 * (tv_end.tv_sec-tv_start.tv_sec) + (tv_end.tv_usec-tv_start.tv_usec);
 
 			if( iDiff >= iLagSpikeTime )
-				Logger::DebugLog( "[MainLoop took %u usecs to execute.]\n", iDiff );
+				LOG->Debug( "[MainLoop took %u usecs to execute.]\n", iDiff );
 		}
 
 		// give a bunch of time to other processes
 		usleep( iSleepTime );
 	}
 
-	Logger::SystemLog( "The impossible happened! :(" );
+	LOG->System( "The impossible happened! :(" );
 }
 
 void ChatServer::UpdateUser( User *user )
 {
 	unsigned iPos = 0;
 
+	memset( m_sReadBuffer, '\0', BUFFER_SIZE );
+
 	// no new data to operate on, or an error occurred
 	if( (iPos = user->Read(m_sReadBuffer, BUFFER_SIZE)) <= 0 )
 		return;
-
-	// delimit the data we got (faster than a memset)
-	m_sReadBuffer[iPos] = '\0';
 
 	// the vast majority of cases won't need split, so we
 	// can optimize the branching logic around that case.
@@ -217,8 +216,8 @@ void ChatServer::HandleUserPacket( User *user, const std::string &buf )
 	// if the packet can't be parsed, drop the client.
 	if( !packet.IsValid() )
 	{
-		Logger::DebugLog( "invalid packet from %s! %s", sUserPrefix.c_str(), buf.c_str() );
-		Logger::DebugLog( "packet data: %s", buf.c_str() );
+		LOG->Debug( "invalid packet from %s! %s", sUserPrefix.c_str(), buf.c_str() );
+		LOG->Debug( "packet data: %s", buf.c_str() );
 		user->Kill();
 		return;
 	}
@@ -244,7 +243,7 @@ void ChatServer::HandleUserPacket( User *user, const std::string &buf )
 	string sLogLine = StringUtil::Format( "%s\t%s",
 		sUserPrefix.c_str(), packet.ToString().c_str() );
 
-	Logger::ChatLog( sLogLine.c_str() );
+	LOG->Chat( sLogLine.c_str() );
 }	
 
 void ChatServer::CheckIdleStatus( User *user )
@@ -329,12 +328,12 @@ void ChatServer::HandleLoginState( User *user )
 	// these states aren't handled here and should never be reached
 	case LOGIN_NONE:
 	case LOGIN_CHECKING:
-		Logger::SystemLog( "I'a Cthulhu! Cthulhu fhtagn! State %i", user->GetLoginState() );
+		LOG->System( "I'a Cthulhu! Cthulhu fhtagn! State %i", user->GetLoginState() );
 		break;
 	}
 
 	// unless the user successfully logged in, kill the connection.
-	if( user->GetLoginState() != LOGIN_SUCCESS )
+	if( user->GetLoginState()  != LOGIN_SUCCESS )
 		user->Kill();
 }
 

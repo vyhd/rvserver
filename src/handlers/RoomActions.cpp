@@ -13,11 +13,13 @@ REGISTER_HANDLER_FN( CREATE_ROOM, HandleCreate );
 REGISTER_HANDLER_FN( DESTROY_ROOM, HandleDestroy );
 REGISTER_HANDLER_FN( FORCE_JOIN, HandleForceJoin );
 
+using namespace std;
+
 bool HandleJoin( ChatServer *server, User *user, const ChatPacket *packet )
 {
-	RoomList *list = server->GetRoomList();
-	const std::string &sRoom = packet->sMessage;
-	Room *room = list->GetRoom( sRoom );
+	const string &sRoom = packet->sMessage;
+
+	Room *room = server->GetRoomList()->GetRoom( sRoom );
 
 	// doesn't exist, so can't join
 	if( room == NULL )
@@ -38,7 +40,8 @@ bool HandleCreate( ChatServer *server, User *user, const ChatPacket *packet )
 	if( !user->IsMod() )
 		return false;
 
-	const std::string &sRoom = packet->sMessage;
+	const string &sRoom = packet->sMessage;
+
 	RoomList *list = server->GetRoomList();
 	Room *room = list->GetRoom( sRoom );
 
@@ -63,7 +66,7 @@ bool HandleCreate( ChatServer *server, User *user, const ChatPacket *packet )
 	room = list->GetRoom( sRoom );
 	if( room == NULL )
 	{
-		Logger::SystemLog( "Failed to get newly created room \"%s\"!", sRoom.c_str() );
+		LOG->System( "Failed to get newly created room \"%s\"!", sRoom.c_str() );
 		return true;	// log it
 	}
 
@@ -81,19 +84,23 @@ bool HandleDestroy( ChatServer *server, User *user, const ChatPacket *packet )
 	if( !user->IsMod() )
 		return false;
 
-	const std::string &sRoom = packet->sMessage;
+	RoomList *pList = server->GetRoomList();
+	const string &sRoom = packet->sMessage;
+
+	// check to make sure that no one's trying to destroy Main
+	const string &sDefaultRoom = pList->GetName( pList->GetDefaultRoom() );
 
 	// consequences shall be dire!
-	if( sRoom.compare(DEFAULT_ROOM) == 0 )
+	if( sRoom.compare( sDefaultRoom ) == 0 )
 	{
-		const std::string HAL = "[Server] I'm afraid I can't let you do that, " + user->GetName() + ".";
+		const string HAL = "[Server] I'm afraid I can't let you do that, " + user->GetName() + ".";
 		server->Broadcast( ChatPacket(WALL_MESSAGE, BLANK, HAL) );
 		user->Kill();
 		return true;
 	}
 
 	// remove the room and broadcast its destruction
-	server->GetRoomList()->RemoveRoom( sRoom );
+	pList->RemoveRoom( sRoom );
 	server->Broadcast( ChatPacket(DESTROY_ROOM, BLANK, sRoom) );
 
 	return true;
@@ -104,7 +111,7 @@ bool HandleForceJoin( ChatServer *server, User *user, const ChatPacket *packet )
 	if( !user->IsMod() )
 		return false;
 
-	const std::string& sRoom = packet->sMessage;
+	const string& sRoom = packet->sMessage;
 	RoomList *list = server->GetRoomList();
 	Room *room = list->GetRoom( sRoom );
 
@@ -123,7 +130,7 @@ bool HandleForceJoin( ChatServer *server, User *user, const ChatPacket *packet )
 	// broadcast the new room join
 	server->Broadcast( ChatPacket(JOIN_ROOM, target->GetName(), sRoom) );
 
-	const std::string sMessage = target->GetName() + " was forced to join "
+	const string sMessage = target->GetName() + " was forced to join "
 		+ sRoom + " by " + user->GetName();
 
 	server->WallMessage( sMessage );

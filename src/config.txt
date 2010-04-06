@@ -9,6 +9,9 @@ LoginPage=/ThePub/authenticate.php
 ConfigPage=/ThePub/chatconfig.php
 BanPage=/ThePub/chatban.php
 
+// if the server can't load config, default to this
+DefaultConfig=theme|Classic|red|0|green|0|blue|0|freezeChat|false|ignoreColors|false|timeStamp|false|beep|true|bleep|true|audio|true
+
 // comma-delimited, e.g. "Room A,Room B"
 AdditionalRooms=Spam Room
 

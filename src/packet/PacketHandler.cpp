@@ -24,13 +24,13 @@ bool PacketHandler::Handle( ChatServer *server, User *user, const ChatPacket *pa
 		return it->second( server, user, packet );
 
 	/* no handler found, so warn about it. */
-	Logger::DebugLog( "Code %u requested, but no handler found!", packet->iCode );
+	LOG->Debug( "Code %u requested, but no handler found!", packet->iCode );
 
-	Logger::DebugLog( "Unhandled packet data:" );
-	Logger::DebugLog( "\tCode: %d", packet->iCode );
-	Logger::DebugLog( "\tUsername: %s", packet->sUsername.c_str() );
-	Logger::DebugLog( "\tMessage: %s", packet->sMessage.c_str() );
-	Logger::DebugLog( "\tRGB: %d/%d/%d", packet->r, packet->g, packet->b );
+	LOG->Debug( "Unhandled packet data:" );
+	LOG->Debug( "\tCode: %d", packet->iCode );
+	LOG->Debug( "\tUsername: %s", packet->sUsername.c_str() );
+	LOG->Debug( "\tMessage: %s", packet->sMessage.c_str() );
+	LOG->Debug( "\tRGB: %d/%d/%d", packet->r, packet->g, packet->b );
 
 	return false;
 }
@@ -38,7 +38,7 @@ bool PacketHandler::Handle( ChatServer *server, User *user, const ChatPacket *pa
 void PacketHandler::DebugDump()
 {
 	for( HandlerMap::iterator it = GetMap()->begin(); it != GetMap()->end(); it++ )
-		Logger::DebugLog( "%d handled at %p", it->first, it->second );
+		LOG->Debug( "%d handled at %p", it->first, it->second );
 }
 
 /* 

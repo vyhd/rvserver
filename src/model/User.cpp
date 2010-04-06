@@ -51,7 +51,7 @@ int User::Write( const std::string &str )
 
 	if( iSent < 0 )
 	{
-		Logger::SystemLog( "Write failed for %s (%s): killing.", m_sName.c_str(), strerror(errno) );
+		LOG->System( "Write failed for %s (%s): killing.", m_sName.c_str(), strerror(errno) );
 		m_Socket.Close();
 		return -1;
 	}
@@ -68,7 +68,7 @@ int User::Read( char *buffer, unsigned len )
 
 	if( iRead < 0 )
 	{
-		Logger::SystemLog( "Read failed for %s (%s): killing.", m_sName.c_str(), strerror(errno) );
+		LOG->System( "Read failed for %s (%s): killing.", m_sName.c_str(), strerror(errno) );
 		m_Socket.Close();
 		return -1;
 	}

@@ -8,11 +8,12 @@
 
 class Room;
 class User;
+class Config;
 
 class RoomList
 {
 public:
-	RoomList();
+	RoomList( Config *cfg );
 	~RoomList();
 
 	Room* GetDefaultRoom() { return m_pDefaultRoom; }

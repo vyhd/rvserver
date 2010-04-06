@@ -1,4 +1,5 @@
 #include "Logger.h"
+#include "util/FileUtil.h"
 #include "util/Config.h"
 #include "util/Thread.h"
 #include <cstdio>
@@ -8,20 +9,13 @@
 #include <string>
 
 using namespace std;
+using namespace FileUtil;
 
-const char* CHAT_LOG = "log.txt";
-const char* SYSTEM_LOG = "system.txt";
-const char* DEBUG_LOG = "debug.txt";
+Logger* LOG;
 
-namespace
-{
-	/* Used to make logging thread safe. Printing data runs on the order
-	 * of microseconds, so we can avoid kernel context switches here. */
-	Mutex g_PrintLock;
+#define DO_IF_OPEN(x,func) if(x) func(x);
 
-	/* This is kind of ugly, but eh... */
-	FILE *g_pChatLog, *g_pSystemLog, *g_pDebugLog;
-}
+Spinlock g_FileLock;
 
 /* writes a line into the given log file with timestamp and newline. */
 static void WriteLine( const char *str, FILE *pFile )
@@ -35,139 +29,170 @@ static void WriteLine( const char *str, FILE *pFile )
 	struct tm *timeval = localtime( &now );
 	strftime( timestamp, 12, "[%X] ", timeval );
 
-	g_PrintLock.Lock();
-	fputs( timestamp, pFile );
+	// make sure only one file is written to at a time */
+	g_FileLock.Lock();
 
-	/* now, put the original string and a newline. */
+	/* put the timestamp, the original string, and a newline. */
+	fputs( timestamp, pFile );
 	fputs( str, pFile );
 	fputc( '\n', pFile );
 
-	g_PrintLock.Unlock();
+	g_FileLock.Unlock();
+}
+
+static void WriteTimeHeader( const char *str, FILE *pFile )
+{
+	char timestamp[16];
+	char header[128];
+
+	time_t now = time(NULL);
+	strftime( timestamp, 16, "%x", localtime(&now) );
+
+	snprintf( header, 128, "\n*** %s - %s ***\n", str, timestamp );
+
+	g_FileLock.Lock();
+	fputs( header, pFile );
+	g_FileLock.Unlock();
+}
+
+Logger::Logger( Config *cfg )
+{
+	// use debugging info unless explicitly disabled
+	m_bDebugLog = cfg->GetBool( "DebugMode", true, true );
+
+	m_pChatLog = m_pSystemLog = m_pDebugLog = NULL;
+}
+
+Logger::~Logger()
+{
+	/* write the ending date/time header */
+
+	WriteTimeHeader( "Log ended", m_pChatLog );
+	WriteTimeHeader( "Log ended", m_pSystemLog );
+	WriteTimeHeader( "Log ended", m_pDebugLog );
+
+	/* flush the file buffers and close the handles */
+	Flush();
+
+	DO_IF_OPEN( m_pChatLog, fclose );
+	DO_IF_OPEN( m_pSystemLog, fclose );
+	DO_IF_OPEN( m_pDebugLog, fclose );
 }
 
 bool Logger::Open( const char *szLogDir )
 {
-	string sDir( szLogDir );
-
-	/* check each error separately */
-	int errno1 = 0, errno2 = 0, errno3 = 0;
-
-	/* append to the chat and system logs, make new debug logs. */
-	g_pChatLog = fopen( (sDir + CHAT_LOG).c_str(), "a" );
-
-	if( g_pChatLog == NULL )
-		errno1 = errno;
-
-	g_pSystemLog = fopen( (sDir + SYSTEM_LOG).c_str(), "a" );
-
-	if( g_pSystemLog == NULL )
-		errno2 = errno;
-
-	g_pDebugLog = fopen( (sDir + DEBUG_LOG).c_str(), "w" );
-
-	if( g_pDebugLog == NULL )
-		errno3 = errno;
-
-	if( !g_pChatLog || !g_pSystemLog || !g_pDebugLog )
+	if( !PathExists(szLogDir) && !CreateDir(szLogDir) )
 	{
-		printf( "Oh, bother. Encountered problems opening:\n" );
-
-		if( g_pChatLog == NULL )	printf( "\t%s (%s)\n", CHAT_LOG, strerror(errno1) );
-		if( g_pSystemLog == NULL )	printf( "\t%s (%s)\n", SYSTEM_LOG, strerror(errno2) );
-		if( g_pDebugLog == NULL )	printf( "\t%s (%s)\n", DEBUG_LOG, strerror(errno3) );
-
+		Stdout( "Cannot create log file directory: %s", szLogDir );
 		return false;
 	}
 
-	/* write date/time headers for logging purposes */
-	char time_header[32];
+	const string sDir( szLogDir );
 
-	time_t now = time(NULL);
-	struct tm *timeval = localtime( &now );
+	const string sChatLog = sDir + "chatlog.txt";
+	const string sSystemLog = sDir + "system.txt";
+	const string sDebugLog = sDir + "debug.txt";
 
-	strftime( time_header, 32, "*** Log started on %x ***", timeval );
+	bool bAllOpened = true;
 
-	ChatLog( time_header );
-	SystemLog( time_header );
-	DebugLog( time_header );
+	// "&=" will pull down to false if any open fails
+	bAllOpened &= OpenFile( sChatLog.c_str(),	"a",	&m_pChatLog );
+	bAllOpened &= OpenFile( sSystemLog.c_str(),	"w",	&m_pSystemLog );
+
+	if( m_bDebugLog )
+		bAllOpened &= OpenFile( sDebugLog.c_str(), "w", &m_pDebugLog );
+
+	return bAllOpened;
+}
+
+bool Logger::OpenFile( const char *szFilePath, const char *szMode, FILE **pFile )
+{
+	*pFile = fopen( szFilePath, szMode );
+
+	if( *pFile == NULL )
+	{
+		Stdout( "Failed to open %s: %s", szFilePath, strerror(errno) );
+		return false;
+	}
+
+	Stdout( "Opened log file \"%s\"", szFilePath );
+	WriteTimeHeader( "Log started", *pFile );
 
 	return true;
-}
-
-void Logger::Close()
-{
-	/* write the ending date/time header */
-	char time_header[36];
-
-	time_t now = time(NULL);
-	struct tm *timeval = localtime( &now );
-
-	strftime( time_header, 36, "*** Log ended on %x ***\n\n", timeval );
-
-	ChatLog( time_header );
-	SystemLog( time_header );
-
-	/* flush the file buffers and close the handles */
-	Flush();
-	fclose( g_pChatLog );
-	fclose( g_pSystemLog );
-	fclose( g_pDebugLog );
-}
+}	
 
 static char s_VABuffer[2048];
 
-static const char* FormatVA( const char *fmt, va_list args )
+string FormatVA( const char *fmt, va_list args )
 {
 	vsnprintf( s_VABuffer, 2048, fmt, args );
-	return s_VABuffer;
+	return string(s_VABuffer);
 }
 
-void Logger::ChatLog( const char *str )
+void Logger::Chat( const char *str )
 {
-	if( !g_pChatLog )
+	if( !m_pChatLog )
 		return;
 
-	// HACK: remove the ending newline, so we don't \n\n.
-	const string sLine = string(str);
-	const string sToWrite = sLine.substr(0,sLine.find_last_of("\n"));
-	WriteLine( sToWrite.c_str(), g_pChatLog );
+	// HACK: strip any newlines added by ChatPacket::ToString.
+	const string sStr( str );
+	const string sLine( sStr, 0, sStr.find_first_of("\n") );
+
+	WriteLine( sLine.c_str(), m_pChatLog );
 }
 
-void Logger::SystemLog( const char *fmt, ... )
+void Logger::System( const char *fmt, ... )
 {
-	if( !g_pSystemLog )
+	if( !m_pSystemLog )
 		return;
 
 	va_list args;
 	va_start( args, fmt );
-	const char *buf = FormatVA( fmt, args );
+
+	string sData = FormatVA( fmt, args );
+	const char *buf = sData.c_str();
+
 	va_end( args );
 
 	/* write the string to the system file. */
-	WriteLine( buf, g_pSystemLog );
-	puts( buf );
+	WriteLine( buf, m_pSystemLog );
+	Stdout( buf );
 }
 
-void Logger::DebugLog( const char *fmt, ... )
+void Logger::Debug( const char *fmt, ... )
 {
-	if( !g_pDebugLog )
+	if( !m_pDebugLog || !m_bDebugLog )
 		return;
 
 	va_list args;
 	va_start( args, fmt );
-	const char *buf = FormatVA( fmt, args );
+
+	string sData = FormatVA( fmt, args );
+	const char *buf = sData.c_str();
+
 	va_end( args );
 
 	/* write the string to the debug file and stdout. */
-	WriteLine( buf, g_pDebugLog );
+	WriteLine( buf, m_pDebugLog );
 	puts( buf );
+}
+
+void Logger::Stdout( const char *fmt, ... )
+{
+	va_list args;
+	va_start( args, fmt );
+
+	vprintf( fmt, args );
+	printf( "\n" );
+
+	va_end( args );
 }
 
 void Logger::Flush()
 {
-	fflush( g_pChatLog );
-	fflush( g_pSystemLog );
-	fflush( g_pDebugLog );
+	DO_IF_OPEN( m_pChatLog, fflush );
+	DO_IF_OPEN( m_pSystemLog, fflush );
+	DO_IF_OPEN( m_pDebugLog, fflush );
 }
 
 /* 

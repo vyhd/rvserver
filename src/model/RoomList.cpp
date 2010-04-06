@@ -5,15 +5,18 @@
 #include "model/User.h"
 #include "packet/ChatPacket.h"
 #include "packet/MessageCodes.h"
+#include "util/Config.h"
 #include "util/StringUtil.h"
 
 using namespace std;
 
-RoomList::RoomList()
+RoomList::RoomList( Config *cfg )
 {
+	const char* DEFAULT_ROOM = cfg->Get( "DefaultRoom", true, "Main" );
+
 	// ensure that the default room always exists
 	m_pDefaultRoom = new Room;
-	m_Rooms[DEFAULT_ROOM.c_str()] = m_pDefaultRoom;
+	m_Rooms[DEFAULT_ROOM] = m_pDefaultRoom;
 }
 
 RoomList::~RoomList()
@@ -78,9 +81,11 @@ void RoomList::RemoveRoom( const std::string &sRoom )
 	if( !RoomExists(sRoom) )
 		return;
 
-	if( sRoom.compare(DEFAULT_ROOM) == 0 )
+	const string &sDefault = this->GetName( m_pDefaultRoom );
+
+	if( sRoom.compare(sDefault) == 0 )
 	{
-		Logger::SystemLog( "Someone tried to /destroy %s! Ignoring...", DEFAULT_ROOM.c_str() );
+		LOG->System( "Someone tried to /destroy %s! Ignoring...", sDefault.c_str() );
 		return;
 	}
 
@@ -97,14 +102,10 @@ void RoomList::RemoveRoom( const std::string &sRoom )
 	// remove all users who were in this room and boot them back to Main
 	const set<User*> *users = pRoom->GetUserSet();
 
-	Room *pDefault = GetRoom( DEFAULT_ROOM );	// this should never fail
-
 	for( set<User*>::const_iterator it = users->begin(); it != users->end(); it++ )
 	{
-		User *user = (*it);
-
-		ChatPacket msg( JOIN_ROOM, user->GetName(), DEFAULT_ROOM );
-		pDefault->Broadcast( msg );
+		ChatPacket msg( JOIN_ROOM, (*it)->GetName(), sDefault );
+		m_pDefaultRoom->Broadcast( msg );
 	}
 
 	delete( pRoom );

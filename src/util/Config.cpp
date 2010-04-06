@@ -1,6 +1,9 @@
-/* Expects INI-style data. You know the type. */
+/* Expects INI-style key=value. You know the type. */
 
-#include <cstdio>
+/* BIG GOTCHA WAITING TO HAPPEN: I'm using LOG->Stdout and _only_ LOG->Stdout
+ * in this file for errors. LOG is still NULL at this point. Stdout is safe
+ * to call, but Chat/System/Debug will definitely segfault here. */
+
 #include <cstdlib>	// for atoi()
 #include <cerrno>
 #include <string>
@@ -19,7 +22,7 @@ bool Config::Load( const char *path )
 
 	if( pFile == NULL )
 	{
-		Logger::SystemLog( "Failed to open \"%s\": %s", path, strerror(errno) );
+		LOG->Stdout( "Failed to open \"%s\": %s", path, strerror(errno) );
 		return false;
 	}
 
@@ -36,7 +39,7 @@ bool Config::Load( const char *path )
 	// read the entire file into memory
 	if( fread(data, sizeof(char), iFileSize, pFile) < 0 )
 	{
-		Logger::SystemLog( "Failed to load \"%s\": %s", path, strerror(errno) );
+		LOG->Stdout( "Failed to load \"%s\": %s", path, strerror(errno) );
 		fclose( pFile );
 		delete[] data;
 		return false;
@@ -69,7 +72,7 @@ bool Config::Load( const char *path )
 			const string sKey = vsLines[i].substr( 0, iSignPos );
 			const string sValue = vsLines[i].substr( iSignPos+1 );
 
-			Logger::DebugLog( "%s -> %s", sKey.c_str(), sValue.c_str() );
+			LOG->Stdout( "%s -> %s", sKey.c_str(), sValue.c_str() );
 
 			/* insert this key/value pair into the map */
 			m_Entries.insert( KeyValPair(sKey,sValue) );
@@ -79,23 +82,25 @@ bool Config::Load( const char *path )
 	return true;
 }
 
-const char* Config::Get( const char *key, bool bOptional ) const
+const char* Config::Get( const char *key, bool bOptional, const char *def ) const
 {
 	KeyValMap::const_iterator it = m_Entries.find( key );
 
 	if( it == m_Entries.end() )
 	{
 		if( bOptional )
-			return NULL;
+			return def;
 
 		// we're lacking vital configuration: force termination.
-		Logger::SystemLog( "ERROR: required config option \"%s\" not found", key );
+		LOG->Stdout( "ERROR: required config option \"%s\" not found", key );
 		raise( SIGTERM );
 		return NULL;
 	}
-
-	Logger::DebugLog( "found value \"%s\" for key %s", it->second.c_str(), key );
-	return it->second.c_str();
+	else
+	{
+		LOG->Stdout( "found value \"%s\" for key %s", it->second.c_str(), key );
+		return it->second.c_str();
+	}
 }
 
 int Config::GetInt( const char *key, bool bOptional, int def ) const

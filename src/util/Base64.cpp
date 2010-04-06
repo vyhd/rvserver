@@ -5,13 +5,22 @@
 
 using namespace std;
 
+const unsigned BUFFER_SIZE = 512;
+
 string Base64::Encode( const string &str )
 {
 	base64_encodestate state;
 	base64_init_encodestate( &state );
 
 	// I don't think anyone's liable to have more than ~300 bytes of password...
-	char out[512];
+	char out[BUFFER_SIZE];
+
+	// sanity check
+	if( str.length() > BUFFER_SIZE )
+	{
+		LOG->System( "Base64::Encode cannot encode! Too many characters (%u/%u)", str.length(), BUFFER_SIZE );
+		return string();
+	}
 
 	int bytes = base64_encode_block( str.c_str(), str.length(), out, &state );
 	bytes += base64_encode_blockend( out + bytes, &state );

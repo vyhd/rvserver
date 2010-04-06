@@ -22,6 +22,8 @@ REGISTER_HANDLER_FN( USER_UNMUTE, HandleUnmute );
 REGISTER_HANDLER_FN( IP_QUERY, HandleQuery );
 REGISTER_HANDLER_FN( FORCE_CLEAR, HandleClear );
 
+using namespace std;
+
 const char* GetAction( uint16_t iCode )
 {
 	switch( iCode )
@@ -38,7 +40,7 @@ const char* GetAction( uint16_t iCode )
 }
 
 /* returns a valid target if 'user' if sName references a user. */
-inline User* GetTarget( ChatServer *server, User* user, const std::string &sName )
+inline User* GetTarget( ChatServer *server, User* user, const string &sName )
 {
 	User* target = server->GetUserByName( sName );
 
@@ -56,13 +58,25 @@ bool HandleRemoveAction( ChatServer *server, User *user, const ChatPacket *packe
 	if( !user->IsMod() )
 		return false;
 
-	/* send a global message about this action */
-	std::string sMessage = packet->sMessage + " was " +
-		GetAction(packet->iCode) + " by " + user->GetName();
+	User *target = GetTarget( server, user, packet->sMessage );
+
+	const string sMessage = packet->sMessage + " was "
+		+ GetAction(packet->iCode) + " by " + user->GetName();
+
+	/* HACK: don't modchat for mute, unmute, ban, or unban. Every time those
+	 * are called, we incur a lookup penalty in the local ban/mute list, so
+	 * we want them to mean it. */
+	switch( packet->iCode )
+	{
+		case USER_BAN:
+		case USER_UNBAN:
+		case USER_MUTE:
+		case USER_UNMUTE:
+			if( target == NULL )
+				return false;
+	};
 
 	server->WallMessage( sMessage );
-
-	User *target = GetTarget( server, user, packet->sMessage );
 
 	// notify the target about the taken action, if they exist
 	if( target != NULL )
@@ -144,7 +158,7 @@ bool HandleQuery( ChatServer *server, User *user, const ChatPacket *packet )
 	user->Write( query.ToString() );
 
 	/* send a global message about this action */
-	std::string sMessage = target->GetName() + " was " +
+	string sMessage = target->GetName() + " was " +
 		GetAction(packet->iCode) + " by " + user->GetName();
 
 	server->WallMessage( sMessage );
