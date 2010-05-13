@@ -25,25 +25,17 @@ bool FileUtil::CreateDir( const char *szDir )
 {
 	string sDir( szDir );
 
-	LOG->Stdout( "sDir: %s", sDir.c_str() );	
-
 	// shortcut for convenience
 	if( sDir.find_first_of('/') == string::npos )
-	{
-		LOG->Stdout( "sDir: no slash found" );
 		return mkdir( szDir, DEFAULT_MODE ) == 0;
-	}
 
 	vector<string> vsDirs;
 	StringUtil::Split( sDir, vsDirs, '/' );
 
 	string sCurrentPath = "/";
 
-	for( unsigned i = 0; i < vsDirs.size(); i++ )
-		LOG->Stdout( "vsDirs[%i]: %s", i, vsDirs[i].c_str() );
-
 	// <=, so we make sure we get the last element
-	for( unsigned i = 0; i <= vsDirs.size(); i++ )
+	for( unsigned i = 0; i <= vsDirs.size(); ++i )
 	{
 		if( PathExists(sCurrentPath.c_str()) )
 		{

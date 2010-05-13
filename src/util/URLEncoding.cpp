@@ -3,20 +3,19 @@
 
 using namespace std;
 
-// returns true if the given character must be encoded.
-static bool unsafe( char c )
+/* 128-byte lookup table. 1 means the character is safe for a URL,
+ * 0 means the character must be escaped (e.g. ' ' -> "%20" ) */
+static const char IS_SAFE[256] =
 {
-	// 0 - 47 is are control and reserved characters
-	// 123-255 are reserved, control, and non-ASCII
-	if( c < 48 || c > 122 )
-		return true;
-
-	// 58-64 and 91-96 are reserved characters
-	if( (c >= 58 && c <= 64) || (c >= 91 && c <= 96) )
-		return true;
-
-	return false;
-}
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0,
+	0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0,
+};
 
 string URLEncoding::Encode( const string &str )
 {
@@ -25,11 +24,11 @@ string URLEncoding::Encode( const string &str )
 	// buffer for printing hex values
 	char buf[4];
 
-	for( string::const_iterator it = str.begin(); it != str.end(); it++ )
+	for( string::const_iterator it = str.begin(); it != str.end(); ++it )
 	{
 		const char &ch = *it;
 
-		if( !unsafe(ch) )
+		if( IS_SAFE[ch] )
 		{
 			ret.push_back( ch );
 			continue;

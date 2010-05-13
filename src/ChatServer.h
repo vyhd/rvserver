@@ -24,6 +24,12 @@ public:
 	ChatServer( Config *cfg );
 	~ChatServer();
 
+	/* loads preferences and starts up the network server */
+	void Start();
+
+	/* tells the main server loop to stop running */
+	void Stop();
+
 	// returns a reference to the user with the given name
 	User* GetUserByName( const std::string &sName ) const;
 
@@ -71,6 +77,8 @@ protected:
 	void CheckIdleStatus( User *user );
 
 private:
+	/* true as long as the server is running */
+	bool m_bRunning;
 
 	/* instance buffer for reading packet data from a user */
 	char m_sReadBuffer[BUFFER_SIZE];

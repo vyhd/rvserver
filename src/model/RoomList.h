@@ -37,6 +37,9 @@ public:
 	/* removes this user from all rooms on the server */
 	void RemoveUser( User *user );
 
+	/* clears the room list completely, except the main room */
+	void ClearRooms();
+
 	/* returns a const pointer to the internal room map */
 	const std::map<std::string,Room*>* GetRooms() const { return &m_Rooms; }
 

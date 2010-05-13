@@ -11,7 +11,7 @@
 using namespace std;
 using namespace FileUtil;
 
-Logger* LOG;
+Logger* LOG = NULL;
 
 #define DO_IF_OPEN(x,func) if(x) func(x);
 
@@ -42,13 +42,16 @@ static void WriteLine( const char *str, FILE *pFile )
 
 static void WriteTimeHeader( const char *str, FILE *pFile )
 {
+	if( pFile == NULL )
+		return;
+
 	char timestamp[16];
 	char header[128];
 
 	time_t now = time(NULL);
 	strftime( timestamp, 16, "%x", localtime(&now) );
 
-	snprintf( header, 128, "\n*** %s - %s ***\n", str, timestamp );
+	snprintf( header, 128, "*** %s - %s ***\n", str, timestamp );
 
 	g_FileLock.Lock();
 	fputs( header, pFile );
@@ -59,6 +62,7 @@ Logger::Logger( Config *cfg )
 {
 	// use debugging info unless explicitly disabled
 	m_bDebugLog = cfg->GetBool( "DebugMode", true, true );
+	m_bChatOutput = cfg->GetBool( "ChatOutput", true, false );
 
 	m_pChatLog = m_pSystemLog = m_pDebugLog = NULL;
 }
@@ -66,6 +70,8 @@ Logger::Logger( Config *cfg )
 Logger::~Logger()
 {
 	/* write the ending date/time header */
+	/* force an unlock, since we're depending on this to finish */
+	g_FileLock.Unlock();
 
 	WriteTimeHeader( "Log ended", m_pChatLog );
 	WriteTimeHeader( "Log ended", m_pSystemLog );
@@ -77,6 +83,8 @@ Logger::~Logger()
 	DO_IF_OPEN( m_pChatLog, fclose );
 	DO_IF_OPEN( m_pSystemLog, fclose );
 	DO_IF_OPEN( m_pDebugLog, fclose );
+
+	m_pChatLog = m_pSystemLog = m_pDebugLog = NULL;
 }
 
 bool Logger::Open( const char *szLogDir )
@@ -131,21 +139,18 @@ string FormatVA( const char *fmt, va_list args )
 
 void Logger::Chat( const char *str )
 {
-	if( !m_pChatLog )
-		return;
-
 	// HACK: strip any newlines added by ChatPacket::ToString.
 	const string sStr( str );
 	const string sLine( sStr, 0, sStr.find_first_of("\n") );
 
-	WriteLine( sLine.c_str(), m_pChatLog );
+	if( m_pChatLog )
+		WriteLine( sLine.c_str(), m_pChatLog );
+	if( m_bChatOutput )
+		Stdout( sLine.c_str() );
 }
 
 void Logger::System( const char *fmt, ... )
 {
-	if( !m_pSystemLog )
-		return;
-
 	va_list args;
 	va_start( args, fmt );
 
@@ -155,15 +160,14 @@ void Logger::System( const char *fmt, ... )
 	va_end( args );
 
 	/* write the string to the system file. */
-	WriteLine( buf, m_pSystemLog );
+	if( m_pSystemLog )
+		WriteLine( buf, m_pSystemLog );
+
 	Stdout( buf );
 }
 
 void Logger::Debug( const char *fmt, ... )
 {
-	if( !m_pDebugLog || !m_bDebugLog )
-		return;
-
 	va_list args;
 	va_start( args, fmt );
 
@@ -173,8 +177,10 @@ void Logger::Debug( const char *fmt, ... )
 	va_end( args );
 
 	/* write the string to the debug file and stdout. */
-	WriteLine( buf, m_pDebugLog );
-	puts( buf );
+	if( m_pDebugLog )
+		WriteLine( buf, m_pDebugLog );
+
+	Stdout( buf );
 }
 
 void Logger::Stdout( const char *fmt, ... )
@@ -186,6 +192,8 @@ void Logger::Stdout( const char *fmt, ... )
 	printf( "\n" );
 
 	va_end( args );
+
+	fflush( stdout );
 }
 
 void Logger::Flush()

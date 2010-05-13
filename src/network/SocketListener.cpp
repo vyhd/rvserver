@@ -20,7 +20,6 @@ SocketListener::SocketListener()
 
 SocketListener::~SocketListener()
 {
-	LOG->Debug( "SocketListener::~SocketListener" );
 	Disconnect();
 }
 

@@ -60,7 +60,7 @@ bool Config::Load( const char *path )
 		StringUtil::Split( sData, vsLines, '\n' );
 
 		// read each line and split the keys and values apart
-		for( unsigned i = 0; i < vsLines.size(); i++ )
+		for( unsigned i = 0; i < vsLines.size(); ++i )
 		{
 			unsigned iSignPos = vsLines[i].find_first_of('=');
 

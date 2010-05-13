@@ -65,10 +65,8 @@ void StringUtil::Split( const string &in, vector<char> &add, const char delim )
 	Split( in, vsData, delim );
 
 	// insert the first character of each string (truncate the rest)
-	for( unsigned i = 0; i < vsData.size(); i++ )
-	{
+	for( unsigned i = 0; i < vsData.size(); ++i )
 		add.push_back( vsData[i][0] );
-	}
 }
 
 /* 

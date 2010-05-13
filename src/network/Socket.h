@@ -21,6 +21,9 @@ public:
 
 	bool IsOpen() const	{ return m_iSocket > 0; }
 
+	bool SetReadTimeout( unsigned iMilliSec );
+	bool SetWriteTimeout( unsigned iMilliSec );
+
 	int Read( char *buffer, unsigned len, bool bDontWait = true );
 	int Write( const char *buffer, unsigned len, bool bDontWait = true );
 	int Write( const std::string &str, bool bDontWait = true );

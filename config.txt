@@ -12,6 +12,9 @@ BanPage=/ThePub/chatban.php
 // if the server can't load config, default to this
 DefaultConfig=theme|Classic|red|0|green|0|blue|0|freezeChat|false|ignoreColors|false|timeStamp|false|beep|true|bleep|true|audio|true
 
+// Name of the default room
+DefaultRoom=RV Chat
+
 // comma-delimited, e.g. "Room A,Room B"
 AdditionalRooms=Spam Room
 
@@ -24,3 +27,10 @@ SleepTime=150000
 
 // optional; any updates taking longer than this report update time on stdout
 LagSpikeTime=250
+
+// Defines the folder under which all logs are kept. Trailing slash required!
+LogPath=/var/log/rvserver/
+
+// If true, all chat lines are output to stdout
+ChatOutput=1
+DebugMode=0

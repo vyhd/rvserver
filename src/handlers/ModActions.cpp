@@ -3,6 +3,7 @@
 
 #include "packet/PacketHandler.h"
 #include "model/Room.h"
+#include "network/DatabaseConnector.h"
 
 bool HandleKick( ChatServer *server, User *user, const ChatPacket *packet );
 bool HandleDisable( ChatServer *server, User *user, const ChatPacket *packet );
@@ -63,18 +64,21 @@ bool HandleRemoveAction( ChatServer *server, User *user, const ChatPacket *packe
 	const string sMessage = packet->sMessage + " was "
 		+ GetAction(packet->iCode) + " by " + user->GetName();
 
-	/* HACK: don't modchat for mute, unmute, ban, or unban. Every time those
-	 * are called, we incur a lookup penalty in the local ban/mute list, so
+	/* HACK: don't modchat for mute, unmute, or ban. Every time those
+	 * are called, we incur a lookup penalty in the ban/mute list, so
 	 * we want them to mean it. */
 	switch( packet->iCode )
 	{
 		case USER_BAN:
-		case USER_UNBAN:
 		case USER_MUTE:
 		case USER_UNMUTE:
 			if( target == NULL )
 				return false;
 	};
+
+	// handle database connectivity
+	if( packet->iCode == USER_BAN )
+		server->GetConnection()->Ban( target->GetName() );
 
 	server->WallMessage( sMessage );
 
@@ -129,8 +133,8 @@ bool HandleBan( ChatServer *server, User *user, const ChatPacket *packet )
 // XXX: won't work right now
 bool HandleUnban( ChatServer *server, User *user, const ChatPacket *packet )
 {
+	server->GetConnection()->Unban( packet->sMessage );
 	return true;
-//	return HandleRemoveAction( server, user, packet );
 }
 
 bool HandleMute( ChatServer *server, User *user, const ChatPacket *packet )

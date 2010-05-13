@@ -49,6 +49,9 @@ private:
 	// is debugging enabled?
 	bool m_bDebugLog;
 
+	// if true, echo all chat output to stdout
+	bool m_bChatOutput;
+
 	// make sure only one call writes to any given file at a time.
 	// this is slower than it could be, but the benefit of having
 	// a spinlock per file is probably negated by it complexity...

@@ -1,6 +1,7 @@
 #include <cerrno>
 
 #include <arpa/inet.h>
+#include <sys/time.h>
 #include <netdb.h>
 
 #include "Socket.h"
@@ -68,6 +69,30 @@ void Socket::Close()
 	shutdown( m_iSocket, SHUT_RDWR );
 	close( m_iSocket );
 	m_iSocket = -1;
+}
+
+bool Socket::SetReadTimeout( unsigned iMilliSec )
+{
+	struct timeval tv;
+
+	/* convert milliseconds to seconds/microseconds */
+	tv.tv_sec = iMilliSec / 1000;
+	tv.tv_usec = (iMilliSec % 1000) * 1000;
+
+	return setsockopt(m_iSocket, SOL_SOCKET, SO_RCVTIMEO,
+		&tv, sizeof(tv) ) == 0;
+}
+
+bool Socket::SetWriteTimeout( unsigned iMilliSec )
+{
+	struct timeval tv;
+
+	/* convert milliseconds to seconds/microseconds */
+	tv.tv_sec = iMilliSec / 1000;
+	tv.tv_usec = (iMilliSec % 1000) * 1000;
+
+	return setsockopt(m_iSocket, SOL_SOCKET, SO_SNDTIMEO,
+		&tv, sizeof(tv) ) == 0;
 }
 
 int Socket::Read( char *buffer, unsigned len, bool bDontWait )

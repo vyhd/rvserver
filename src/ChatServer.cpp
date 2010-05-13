@@ -24,14 +24,39 @@ using namespace std;
 /* TODO: stuff most of this logic into a ::Start routine. */
 ChatServer::ChatServer( Config *cfg ) : m_pListener(NULL), m_pConfig(cfg), m_Rooms(cfg)
 {
-	unsigned short iPort = m_pConfig->GetInt( "ServerPort" );
-
 	m_pListener = new SocketListener;
-	m_pListener->Connect( iPort );
+}
 
-	m_pConnector = new DatabaseConnector( m_pConfig );
+ChatServer::~ChatServer()
+{
+	Stop();
 
-	// extra rooms are nice, but not vital
+	if( m_pListener )
+	{
+		delete m_pListener;
+		m_pListener = NULL;
+	}
+
+	if( m_pConnector )
+	{
+		delete m_pConnector;
+		m_pConnector = NULL;
+	}
+}
+
+void ChatServer::Start()
+{
+	if( m_pListener->IsConnected() )
+		m_pListener->Disconnect();
+
+	// connect to the port specified in the configuration
+	m_pListener->Connect( m_pConfig->GetInt("ServerPort") );
+
+	// initialize the database connector if we haven't
+	if( !m_pConnector )
+		m_pConnector = new DatabaseConnector( m_pConfig );
+
+	// check for, and initialize, additional rooms
 	const char* EXTRA_ROOMS	= m_pConfig->Get( "AdditionalRooms", true );
 
 	if( EXTRA_ROOMS )
@@ -39,29 +64,35 @@ ChatServer::ChatServer( Config *cfg ) : m_pListener(NULL), m_pConfig(cfg), m_Roo
 		vector<string> vsRooms;
 		StringUtil::Split( EXTRA_ROOMS, vsRooms, ',' );
 
-		for( unsigned i = 0; i < vsRooms.size(); i++ )
-		{
-			LOG->Debug( "Adding room: %s", vsRooms[i].c_str() );
+		for( unsigned i = 0; i < vsRooms.size(); ++i )
 			m_Rooms.AddRoom( vsRooms[i] );
-		}
 	}
 
-	// set up user level information
+	// set up server-side user level stuff.
+	// TODO: synchronization mechanism between database and server?
 	const char* sModLevels = m_pConfig->Get( "ModLevels" );
 	const char* sBanLevel = m_pConfig->Get( "BanLevel" );
 
 	m_sModLevels.assign( sModLevels );
 	m_cBanLevel = sBanLevel[0];
+
+	m_bRunning = true;
 }
 
-ChatServer::~ChatServer()
+void ChatServer::Stop()
 {
-	if( m_pListener )
-	{
-		m_pListener->Disconnect();
-		delete m_pListener;
-		m_pListener = NULL;
-	}
+	m_bRunning = false;
+
+	// remove all users
+	for( list<User*>::iterator it = m_Users.begin(); it != m_Users.end(); ++it )
+		RemoveUser( *it );
+
+	m_Users.clear();
+
+	// wipe all the rooms except the default room
+	m_Rooms.ClearRooms();
+
+	m_pListener->Disconnect();
 }
 
 void ChatServer::AddUser( unsigned iSocket )
@@ -82,9 +113,13 @@ void ChatServer::RemoveUser( User *user )
 		user->SetLoggedIn( false );
 		Broadcast( ChatPacket(USER_PART, user->GetName(), BLANK) );
 
+		if( !user->GetName().empty() )
+			LOG->Debug( "Saving prefs for %s", user->GetName().c_str() );
 		// save this user's preferences
 		m_pConnector->SavePrefs( user );
 	}
+
+	user->Kill();
 
 	// take this user out of the RoomList
 	m_Rooms.RemoveUser( user );
@@ -107,7 +142,7 @@ void ChatServer::MainLoop()
 
 	struct timeval tv_start, tv_end;
 
-	while( true )
+	while( m_bRunning )
 	{
 		gettimeofday( &tv_start, NULL );
 
@@ -120,7 +155,7 @@ void ChatServer::MainLoop()
 		}
 
 		// loop over all the clients and update them as needed
-		for( list<User*>::iterator it = m_Users.begin(); it != m_Users.end(); it++ )
+		for( list<User*>::iterator it = m_Users.begin(); it != m_Users.end(); ++it )
 		{
 			User *user = (*it);
 
@@ -200,7 +235,7 @@ void ChatServer::UpdateUser( User *user )
 		vector<std::string> vPackets;
 		PacketUtil::Split( sBuffer, vPackets );
 
-		for( unsigned i = 0; i < vPackets.size(); i++ )
+		for( unsigned i = 0; i < vPackets.size(); ++i )
 			HandleUserPacket( user, vPackets[i] );
 	}
 }
@@ -341,7 +376,7 @@ User* ChatServer::GetUserByName( const std::string &sName ) const
 {
 	// XXX: always a linear search. Can we improve on that?
 	// (probably not, we don't have a high enough user load to justify it)
-	for( list<User*>::const_iterator it = m_Users.begin(); it != m_Users.end(); it++ )
+	for( list<User*>::const_iterator it = m_Users.begin(); it != m_Users.end(); ++it )
 		if( !StringUtil::CompareNoCase((*it)->GetName(), sName) )
 			return (*it);
 
@@ -372,7 +407,7 @@ void ChatServer::Broadcast( const ChatPacket &packet )
 	const std::string sPacketData = packet.ToString();
 
 	// send to every single user on the server
-	for( list<User*>::iterator it = m_Users.begin(); it != m_Users.end(); it++ )
+	for( list<User*>::iterator it = m_Users.begin(); it != m_Users.end(); ++it )
 	{
 		User *user = (*it);
 
@@ -388,7 +423,7 @@ void ChatServer::WallMessage( const std::string &sMessage )
 {
 	const std::string sPacket = ChatPacket(WALL_MESSAGE, BLANK, sMessage).ToString();
 
-	for( list<User*>::iterator it = m_Users.begin(); it != m_Users.end(); it++ )
+	for( list<User*>::iterator it = m_Users.begin(); it != m_Users.end(); ++it )
 	{
 		User *user = (*it);
 

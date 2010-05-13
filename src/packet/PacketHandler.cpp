@@ -37,7 +37,7 @@ bool PacketHandler::Handle( ChatServer *server, User *user, const ChatPacket *pa
 
 void PacketHandler::DebugDump()
 {
-	for( HandlerMap::iterator it = GetMap()->begin(); it != GetMap()->end(); it++ )
+	for( HandlerMap::iterator it = GetMap()->begin(); it != GetMap()->end(); ++it )
 		LOG->Debug( "%d handled at %p", it->first, it->second );
 }
 

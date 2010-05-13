@@ -1,13 +1,10 @@
 Two notes about this:
 
-- Right now, you need to make a "logs" folder in the same directory as the
-  chat server. All logs are stored there. If you don't make the folder, the
-  chat will fail to start. It's dumb, I know; I just haven't changed it yet.
+- Configuration is loaded from ~/.rvserver for the running user. The file
+  in the pack (config.txt) contains all the valid configuration options.
 
-- The "config.txt" also must be in the same directory as the chat server (see
-  above). It works with simple key=value pairs. I left comments so you can
-  mess around with them. If you have ideas for more stuff that might need to
-  be modifed, let me know.
+- Logs are saved in whatever directory LogPath is set to. If it doesn't exist,
+  the binary will do its best to try and create it. (No guarantees.)
 
 Thanks, and have fun! :P
 

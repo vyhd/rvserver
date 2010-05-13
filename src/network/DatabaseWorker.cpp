@@ -1,5 +1,4 @@
 #include <cerrno>
-
 #include "network/DatabaseWorker.h"
 #include "model/User.h"
 #include "util/Base64.h"
@@ -43,12 +42,6 @@ DatabaseWorker::DatabaseWorker( const Config *cfg )
 	const char* BAN_PAGE		= cfg->Get( "BanPage" );
 	const char* DEFAULT_CONFIG	= cfg->Get( "DefaultConfig" );
 
-	if( !DATABASE_HOST || !LOGIN_PAGE || !CONFIG_PAGE || !BAN_PAGE || !DEFAULT_CONFIG )
-	{
-		LOG->System( "Could not find necessary database config!" );
-		return;
-	}
-
 	m_sServer.assign( DATABASE_HOST );
 	m_sAuthPage.assign( LOGIN_PAGE );
 	m_sConfigPage.assign( CONFIG_PAGE );
@@ -72,7 +65,6 @@ void DatabaseWorker::AddRequest( Request *req )
 {
 	m_QueueLock.Lock();
 	m_Requests.push( req );
-	LOG->Debug( "Pushed request (%i,%u,%s)", req->type, req->user, req->data.c_str() );
 	m_QueueLock.Unlock();
 }
 
@@ -80,12 +72,8 @@ Request* DatabaseWorker::PopRequest()
 {
 	m_QueueLock.Lock();
 
-	LOG->Debug( "Had %u...", m_Requests.size() );
-
 	Request *ret = m_Requests.front();
 	m_Requests.pop();
-
-	LOG->Debug( "Now have %u.", m_Requests.size() );
 
 	m_QueueLock.Unlock();
 	return ret;
@@ -95,6 +83,10 @@ bool DatabaseWorker::Connect()
 {
 	if( !m_Socket.OpenHost(m_sServer, 80) )
 		LOG->System( "Failed to connect to %s!", m_sServer.c_str() );
+
+	/* wait 5 seconds for reads to fail, 10 seconds for writes to fail */
+	m_Socket.SetReadTimeout( 5*1000 );
+	m_Socket.SetWriteTimeout( 10*1000 );
 
 	return m_Socket.IsOpen();
 }
@@ -149,13 +141,14 @@ void DatabaseWorker::HandleRequests()
 {
 	while( m_bRunning )
 	{
-		// until we've got a request, sleep.
-		while( m_Requests.empty() )
+		// sleep until we have a request or stop running
+		if( m_Requests.empty() )
+		{
 			usleep( SLEEP_MICROSECONDS );
+			continue;
+		}
 
 		Request *req = PopRequest();
-
-		LOG->Debug( "Popped request: (%u, %p, %s)", req->type, req->user, req->data.c_str() );
 
 		switch( req->type )
 		{
@@ -171,10 +164,12 @@ void DatabaseWorker::HandleRequests()
 			LOG->System( "??? Unknown DBWorker request %d", req->type );
 		}
 
+/*
 		LOG->Debug( "Request( %i, %p, %s ) handled",
 			req->type, req->user, 
 			(req->type == REQ_LOGIN ? "<censored>" : req->data.c_str())
 		);
+*/
 
 		delete req;
 	}
@@ -293,7 +288,13 @@ void DatabaseWorker::DoSavePrefs( Request *req )
 
 void DatabaseWorker::DoBan( Request *req, bool bBan )
 {
+	const char *action = bBan ? "ban" : "unban";
 
+	const string& sName = req->data;
+
+	const string sSafeName = URLEncoding::Encode( sName );
+	const string sMessage = Format( "username=%s&action=%s",
+		sSafeName.c_str(), action );
 }
 
 const char* DatabaseWorker::SendPOST( const string &sForm, const string &params )
@@ -307,6 +308,7 @@ const char* DatabaseWorker::SendPOST( const string &sForm, const string &params 
 
 	/* Create a HTTP 1.1 POST packet and send it to the server */
 	string msg;
+	msg.reserve( 1024 );
 	msg.append( Format("POST %s HTTP/1.1\r\n", sForm.c_str()) );
 	msg.append( Format("Host: %s\r\n", m_sServer.c_str()) );
 	msg.append( "User-Agent: RVServer/1.0\r\n" );

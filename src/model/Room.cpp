@@ -32,7 +32,7 @@ void Room::Broadcast( const ChatPacket &packet )
 	// cache this: we only need to call it once
 	const string msg = packet.ToString();
 
-	for( set<User*>::iterator it = m_Users.begin(); it != m_Users.end(); it++ )
+	for( set<User*>::iterator it = m_Users.begin(); it != m_Users.end(); ++it )
 	{
 		User *user = (*it);
 

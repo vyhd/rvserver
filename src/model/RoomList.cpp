@@ -24,9 +24,10 @@ RoomList::~RoomList()
 	map<string,Room*>::iterator it;
 
 	// delete all Room pointers in our map
-	for( it = m_Rooms.begin(); it != m_Rooms.end(); it++ )
+	for( it = m_Rooms.begin(); it != m_Rooms.end(); ++it )
 		delete it->second;
 
+	m_pDefaultRoom = NULL;
 	m_Rooms.clear();
 }
 
@@ -34,7 +35,7 @@ Room* RoomList::GetRoom( const std::string &sRoom ) const
 {
 	map<string,Room*>::const_iterator it;
 
-	for( it = m_Rooms.begin(); it != m_Rooms.end(); it++ )
+	for( it = m_Rooms.begin(); it != m_Rooms.end(); ++it )
 		if( !StringUtil::CompareNoCase(sRoom, it->first) )
 			return it->second;
 
@@ -45,7 +46,7 @@ std::string RoomList::GetName( const Room *room ) const
 {
 	map<string,Room*>::const_iterator it;
 
-	for( it = m_Rooms.begin(); it != m_Rooms.end(); it++ )
+	for( it = m_Rooms.begin(); it != m_Rooms.end(); ++it )
 		if( it->second == room )
 			return it->first;
 
@@ -58,7 +59,7 @@ void RoomList::RemoveUser( User *user )
 
 	// just remove from all rooms...we can afford it.
 	// that's easier than the logic needed to find/erase.
-	for( it = m_Rooms.begin(); it != m_Rooms.end(); it++ )
+	for( it = m_Rooms.begin(); it != m_Rooms.end(); ++it )
 		it->second->RemoveUser( user );
 }
 		
@@ -102,13 +103,29 @@ void RoomList::RemoveRoom( const std::string &sRoom )
 	// remove all users who were in this room and boot them back to Main
 	const set<User*> *users = pRoom->GetUserSet();
 
-	for( set<User*>::const_iterator it = users->begin(); it != users->end(); it++ )
+	for( set<User*>::const_iterator it = users->begin(); it != users->end(); ++it )
 	{
 		ChatPacket msg( JOIN_ROOM, (*it)->GetName(), sDefault );
 		m_pDefaultRoom->Broadcast( msg );
 	}
 
 	delete( pRoom );
+}
+
+void RoomList::ClearRooms()
+{
+	const string &sDefault = this->GetName( m_pDefaultRoom );
+
+	for( map<string,Room*>::iterator it = m_Rooms.begin(); it != m_Rooms.end(); ++it )
+	{
+		const string &sName = it->first;
+
+		// skip the main room (we're booting everyone else back here)
+		if( sName.compare(sDefault) )
+			continue;
+
+		RemoveRoom( sName );
+	}
 }
 
 /* 

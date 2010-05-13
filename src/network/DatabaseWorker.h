@@ -1,5 +1,4 @@
-/* DatabaseWorker: handles network requests in a separate thread, using 
- * a queue and User pointers to manipulate . */
+/* DatabaseWorker: handles network requests in a separate thread. */
 
 #include <string>
 #include <queue>
@@ -65,8 +64,6 @@ private:
 
 	// default configuration to be loaded if the server can't find any
 	std::string m_sDefaultConfig;
-
-	// 
 
 	/* requests that are handled by the request thread */
 	std::queue<Request*> m_Requests;
