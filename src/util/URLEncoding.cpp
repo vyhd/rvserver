@@ -26,7 +26,7 @@ string URLEncoding::Encode( const string &str )
 
 	for( string::const_iterator it = str.begin(); it != str.end(); ++it )
 	{
-		const char &ch = *it;
+		const unsigned char &ch = *it;
 
 		if( IS_SAFE[ch] )
 		{

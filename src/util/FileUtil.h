@@ -8,6 +8,9 @@ namespace FileUtil
 
 	// attempts to create a directory path recursively
 	bool CreateDir( const char *szDir );
+
+	// returns the system-specific configuration path
+	const char* GetConfigFilePath();
 }
 
 #endif // FILE_UTIL

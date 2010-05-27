@@ -54,3 +54,29 @@ bool FileUtil::CreateDir( const char *szDir )
 
 	return true;
 }
+
+const char* FileUtil::GetConfigFilePath()
+{
+	/* We cache this, since it'll never change and so we can
+	 * simply return a char* instead of a new std::string. */
+
+	static string s_sConfigFilePath;
+
+	if( !s_sConfigFilePath.empty() )
+		return s_sConfigFilePath.c_str();
+
+	const char* szHome = getenv( "HOME" );
+
+	if( szHome )
+	{
+		s_sConfigFilePath = string(szHome) + "/.rvserver";
+	}
+	else
+	{
+		LOG->Stdout( "Warning: could not get $HOME!" );
+		s_sConfigFilePath = "";
+	}
+
+
+	return GetConfigFilePath();
+}

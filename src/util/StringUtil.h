@@ -27,37 +27,6 @@ namespace StringUtil
 		const char delim );
 }
 
-/* Various STL algorithms (find_if, count_if, etc.) require a single-argument 
- * call to determine what should be found, counted, etc...we can't do a single
- * argument for string comparison, so this is the workaround. Essentially,
- * we cache the compared string in the object and compare an argument to it.
-*/
-
-class StringComp
-{
-public:
-	StringComp( const std::string &str ) : m_sPattern(str) { }
-	virtual ~StringComp() { }
-	virtual bool operator()( const std::string &check )
-	{
-		return check.compare( 0, m_sPattern.length(), m_sPattern ) == 0;
-	}
-protected:
-	const std::string& m_sPattern;
-};
-
-// forces all comparisons to lower-case, i.e. case insensitive
-class StringCompI: public StringComp
-{
-public:
-	StringCompI( const std::string &str ) : StringComp(str) { }
-	virtual ~StringCompI() { }
-	virtual bool operator()( const std::string &check )
-	{
-		return StringUtil::CompareNoCase( check, m_sPattern, m_sPattern.length() );
-	}
-};
-
 #endif // STRING_UTIL_H
 
 /* 

@@ -21,8 +21,7 @@
 
 using namespace std;
 
-/* TODO: stuff most of this logic into a ::Start routine. */
-ChatServer::ChatServer( Config *cfg ) : m_pListener(NULL), m_pConfig(cfg), m_Rooms(cfg)
+ChatServer::ChatServer() : m_pListener(NULL)
 {
 	m_pListener = new SocketListener;
 }
@@ -46,6 +45,12 @@ ChatServer::~ChatServer()
 
 void ChatServer::Start()
 {
+	if( m_pConfig == NULL )
+	{
+		LOG->Stdout( "ChatServer::Start: cannot start without configuration!" );
+		return;
+	}
+
 	if( m_pListener->IsConnected() )
 		m_pListener->Disconnect();
 
@@ -56,6 +61,12 @@ void ChatServer::Start()
 	if( !m_pConnector )
 		m_pConnector = new DatabaseConnector( m_pConfig );
 
+	// Remove the RoomList, if it exists, and re-create it
+	if( m_pRooms )
+		delete m_pRooms;
+
+	m_pRooms = new RoomList( m_pConfig );
+
 	// check for, and initialize, additional rooms
 	const char* EXTRA_ROOMS	= m_pConfig->Get( "AdditionalRooms", true );
 
@@ -65,7 +76,7 @@ void ChatServer::Start()
 		StringUtil::Split( EXTRA_ROOMS, vsRooms, ',' );
 
 		for( unsigned i = 0; i < vsRooms.size(); ++i )
-			m_Rooms.AddRoom( vsRooms[i] );
+			m_pRooms->AddRoom( vsRooms[i] );
 	}
 
 	// set up server-side user level stuff.
@@ -90,7 +101,7 @@ void ChatServer::Stop()
 	m_Users.clear();
 
 	// wipe all the rooms except the default room
-	m_Rooms.ClearRooms();
+	m_pRooms->ClearRooms();
 
 	m_pListener->Disconnect();
 }
@@ -122,7 +133,7 @@ void ChatServer::RemoveUser( User *user )
 	user->Kill();
 
 	// take this user out of the RoomList
-	m_Rooms.RemoveUser( user );
+	m_pRooms->RemoveUser( user );
 
 	delete user;
 }
@@ -142,8 +153,16 @@ void ChatServer::MainLoop()
 
 	struct timeval tv_start, tv_end;
 
-	while( m_bRunning )
+	while( true )
 	{
+		// If we're not running, then keep looping (lazily) until we are.
+		// We don't actually want to stop this function; it's only called once.
+		if( !m_bRunning )
+		{
+			sleep( 1 );
+			continue;
+		}
+
 		gettimeofday( &tv_start, NULL );
 
 		// see if the SocketListener has any new connections and add them.
@@ -345,7 +364,7 @@ void ChatServer::HandleLoginState( User *user )
 		ChatPacket prefs(CLIENT_CONFIG, BLANK, user->GetPrefs() );
 		user->Write( prefs.ToString() );
 
-		m_Rooms.GetDefaultRoom()->AddUser( user );
+		m_pRooms->GetDefaultRoom()->AddUser( user );
 		user->SetLoggedIn( true );
 
 		// send the new guy a nice little version message
@@ -386,7 +405,7 @@ User* ChatServer::GetUserByName( const std::string &sName ) const
 
 std::string ChatServer::GetUserState( const User *user ) const
 {
-	const string sRoom = m_Rooms.GetName( user->GetRoom() );
+	const string sRoom = m_pRooms->GetName( user->GetRoom() );
 	const char cLevel = user->GetLevel();
 	const char cMuted = user->IsMuted() ? 'M' : '_';
 	string sIdle( BLANK ), sAway( BLANK );

@@ -22,6 +22,7 @@ public:
 	 * then we'll fall back on the default value given in the argument. */
 	int GetInt( const char *key, bool bOptional = false, int def = 0 ) const;
 	bool GetBool( const char *key, bool bOptional = false, bool def = false ) const;
+
 private:
 	/* contains key/value configuration values */
 	KeyValMap m_Entries;

@@ -21,8 +21,11 @@ const unsigned BUFFER_SIZE = 1024*4;
 class ChatServer
 {
 public:
-	ChatServer( Config *cfg );
+	ChatServer();
 	~ChatServer();
+
+	/* sets configuration */
+	void SetConfig( Config *cfg )	{ m_pConfig = cfg; }
 
 	/* loads preferences and starts up the network server */
 	void Start();
@@ -51,8 +54,8 @@ public:
 	// no non-const version because no functions should need it
 	const std::list<User*>* GetUserList() const	{ return &m_Users; }
 
-	RoomList* GetRoomList()	{ return &m_Rooms; }
-	const RoomList* GetRoomList() const { return &m_Rooms; }
+	RoomList* GetRoomList()	{ return m_pRooms; }
+	const RoomList* GetRoomList() const { return m_pRooms; }
 
 	/* retrieves a pointer to the database connector for login/prefs */
 	DatabaseConnector* GetConnection() { return m_pConnector; }
@@ -93,7 +96,7 @@ private:
 	Config *m_pConfig;
 
 	/* handles all room logic */
-	RoomList m_Rooms;
+	RoomList *m_pRooms;
 
 	/* set of all users being updated */
 	std::list<User*> m_Users;
