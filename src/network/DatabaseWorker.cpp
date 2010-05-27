@@ -48,8 +48,13 @@ DatabaseWorker::DatabaseWorker( const Config *cfg )
 	m_sBanPage.assign( BAN_PAGE );
 	m_sDefaultConfig.assign( DEFAULT_CONFIG );
 
+	m_iReadTimeout = cfg->GetInt( "DatabaseReadTimeout", true, 5000 );
+	m_iWriteTimeout = cfg->GetInt( "DatabaseWriteTimeout", true, 5000 );
+
 	m_bRunning = true;
 	m_Thread.Start( &Start, this );
+
+	m_QueueLock.Unlock();
 }
 
 DatabaseWorker::~DatabaseWorker()
@@ -70,12 +75,16 @@ void DatabaseWorker::AddRequest( Request *req )
 
 Request* DatabaseWorker::PopRequest()
 {
+	if( m_Requests.empty() )
+		return NULL;
+
 	m_QueueLock.Lock();
 
 	Request *ret = m_Requests.front();
 	m_Requests.pop();
 
 	m_QueueLock.Unlock();
+
 	return ret;
 }
 
@@ -85,8 +94,8 @@ bool DatabaseWorker::Connect()
 		LOG->System( "Failed to connect to %s!", m_sServer.c_str() );
 
 	/* wait 5 seconds for reads to fail, 10 seconds for writes to fail */
-	m_Socket.SetReadTimeout( 5*1000 );
-	m_Socket.SetWriteTimeout( 10*1000 );
+	m_Socket.SetReadTimeout( m_iReadTimeout );
+	m_Socket.SetWriteTimeout( m_iWriteTimeout );
 
 	return m_Socket.IsOpen();
 }

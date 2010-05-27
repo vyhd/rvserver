@@ -84,12 +84,6 @@ void RoomList::RemoveRoom( const std::string &sRoom )
 
 	const string &sDefault = this->GetName( m_pDefaultRoom );
 
-	if( sRoom.compare(sDefault) == 0 )
-	{
-		LOG->System( "Someone tried to /destroy %s! Ignoring...", sDefault.c_str() );
-		return;
-	}
-
 	// find the room in the room list and remove it.
 	map<string,Room*>::iterator it = m_Rooms.find( sRoom.c_str() );
 

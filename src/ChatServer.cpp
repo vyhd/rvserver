@@ -47,7 +47,7 @@ void ChatServer::Start()
 {
 	if( m_pConfig == NULL )
 	{
-		LOG->Stdout( "ChatServer::Start: cannot start without configuration!" );
+		LOG->Debug( "ChatServer::Start: cannot start without configuration!" );
 		return;
 	}
 
@@ -126,6 +126,7 @@ void ChatServer::RemoveUser( User *user )
 
 		if( !user->GetName().empty() )
 			LOG->Debug( "Saving prefs for %s", user->GetName().c_str() );
+
 		// save this user's preferences
 		m_pConnector->SavePrefs( user );
 	}
@@ -261,6 +262,8 @@ void ChatServer::UpdateUser( User *user )
 
 void ChatServer::HandleUserPacket( User *user, const std::string &buf )
 {
+	LOG->Debug( "Packet data: %s\n", buf.c_str() );
+
 	// create user-specific log prefix, e.g. "Fire_Adept@127.0.0.1"
 	const string sUserPrefix = StringUtil::Format( "%s@%s", user->GetName().c_str(), user->GetIP() );
 
@@ -382,7 +385,7 @@ void ChatServer::HandleLoginState( User *user )
 	// these states aren't handled here and should never be reached
 	case LOGIN_NONE:
 	case LOGIN_CHECKING:
-		LOG->System( "I'a Cthulhu! Cthulhu fhtagn! State %i", user->GetLoginState() );
+		LOG->System( "I'a Dagon! State %i", user->GetLoginState() );
 		break;
 	}
 

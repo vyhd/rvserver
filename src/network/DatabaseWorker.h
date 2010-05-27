@@ -77,6 +77,9 @@ private:
 	/* true while the thread is still running. */
 	bool m_bRunning;
 
+	/* read and write timeouts for database connections */
+	int m_iReadTimeout, m_iWriteTimeout;
+
 	Socket m_Socket;
 	Thread m_Thread;
 };

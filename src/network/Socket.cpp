@@ -73,6 +73,7 @@ void Socket::Close()
 
 bool Socket::SetReadTimeout( unsigned iMilliSec )
 {
+	LOG->Debug( "SetReadTimeout( %u )", iMilliSec );
 	struct timeval tv;
 
 	/* convert milliseconds to seconds/microseconds */
@@ -85,6 +86,7 @@ bool Socket::SetReadTimeout( unsigned iMilliSec )
 
 bool Socket::SetWriteTimeout( unsigned iMilliSec )
 {
+	LOG->Debug( "SetWriteTimeout( %u )", iMilliSec );
 	struct timeval tv;
 
 	/* convert milliseconds to seconds/microseconds */
