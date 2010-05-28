@@ -17,7 +17,7 @@ bool ListUsers::HandlePacket( ChatServer *server, User *user, const ChatPacket *
 
 	for( std::list<User*>::const_iterator it = users->begin(); it != users->end(); ++it )
 	{
-		if( !user->IsLoggedIn() )
+		if( !(*it)->IsLoggedIn() )
 			continue;
 
 		ChatPacket packet( USER_LIST, (*it)->GetName(), server->GetUserState(*it) );

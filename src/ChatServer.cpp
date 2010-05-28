@@ -262,8 +262,6 @@ void ChatServer::UpdateUser( User *user )
 
 void ChatServer::HandleUserPacket( User *user, const std::string &buf )
 {
-	LOG->Debug( "Packet data: %s\n", buf.c_str() );
-
 	// create user-specific log prefix, e.g. "Fire_Adept@127.0.0.1"
 	const string sUserPrefix = StringUtil::Format( "%s@%s", user->GetName().c_str(), user->GetIP() );
 
