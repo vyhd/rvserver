@@ -21,6 +21,7 @@ Network = network/Socket.cpp network/Socket.h \
 
 Model = model/Room.cpp model/Room.h \
 	model/RoomList.cpp model/RoomList.h \
+	model/TimedList.cpp model/TimedList.h \
 	model/User.cpp model/User.h
 
 Logger = logger/Logger.cpp logger/Logger.h
