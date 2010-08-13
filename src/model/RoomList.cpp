@@ -27,6 +27,7 @@ RoomList::~RoomList()
 	for( it = m_Rooms.begin(); it != m_Rooms.end(); ++it )
 		delete it->second;
 
+	// this is deleted in the above loop
 	m_pDefaultRoom = NULL;
 	m_Rooms.clear();
 }
@@ -82,8 +83,6 @@ void RoomList::RemoveRoom( const std::string &sRoom )
 	if( !RoomExists(sRoom) )
 		return;
 
-	const string &sDefault = this->GetName( m_pDefaultRoom );
-
 	// find the room in the room list and remove it.
 	map<string,Room*>::iterator it = m_Rooms.find( sRoom.c_str() );
 
@@ -92,9 +91,20 @@ void RoomList::RemoveRoom( const std::string &sRoom )
 
 	// get the Room pointer from this entry, erase the entry
 	Room *pRoom = it->second;
+
+	// ignore attempts to remove the main room
+	if( pRoom == m_pDefaultRoom )
+	{
+		LOG->System( "RemoveRoom called on default room, ignoring..." );
+		return;
+	}
+
 	m_Rooms.erase( it );
 
-	// remove all users who were in this room and boot them back to Main
+	// get the name so we can move people back here
+	const string& sDefault = GetName( m_pDefaultRoom );
+
+	// remove all users in this room and boot them back to the main room
 	const set<User*> *users = pRoom->GetUserSet();
 
 	for( set<User*>::const_iterator it = users->begin(); it != users->end(); ++it )
