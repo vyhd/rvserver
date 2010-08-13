@@ -8,10 +8,10 @@ bool HandleCreate( ChatServer *server, User *user, const ChatPacket *packet );
 bool HandleDestroy( ChatServer *server, User *user, const ChatPacket *packet );
 bool HandleForceJoin( ChatServer *server, User *user, const ChatPacket *packet );
 
-REGISTER_HANDLER_FN( JOIN_ROOM, HandleJoin );
-REGISTER_HANDLER_FN( CREATE_ROOM, HandleCreate );
-REGISTER_HANDLER_FN( DESTROY_ROOM, HandleDestroy );
-REGISTER_HANDLER_FN( FORCE_JOIN, HandleForceJoin );
+REGISTER_HANDLER( JOIN_ROOM, HandleJoin );
+REGISTER_HANDLER( CREATE_ROOM, HandleCreate );
+REGISTER_HANDLER( DESTROY_ROOM, HandleDestroy );
+REGISTER_HANDLER( FORCE_JOIN, HandleForceJoin );
 
 using namespace std;
 

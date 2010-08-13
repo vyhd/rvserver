@@ -3,16 +3,13 @@
 
 #include "packet/PacketHandler.h"
 
-namespace Typing
-{
-	bool HandlePacket( ChatServer *server, User *user, const ChatPacket *packet );
-}
+bool HandleTyping( ChatServer *server, User *user, const ChatPacket *packet );
 
-REGISTER_HANDLER( START_TYPING, Typing );
-REGISTER_HANDLER( STOP_TYPING, Typing );
-REGISTER_HANDLER( RESET_TYPING, Typing );
+REGISTER_HANDLER( START_TYPING, HandleTyping );
+REGISTER_HANDLER( STOP_TYPING, HandleTyping );
+REGISTER_HANDLER( RESET_TYPING, HandleTyping );
 
-bool Typing::HandlePacket( ChatServer *server, User *user, const ChatPacket *packet )
+bool HandleTyping( ChatServer *server, User *user, const ChatPacket *packet )
 {
 	// never send any of these messages if the user shouldn't
 	if( user->IsMuted() )

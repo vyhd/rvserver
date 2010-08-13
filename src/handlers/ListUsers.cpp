@@ -1,14 +1,11 @@
 #include "packet/PacketHandler.h"
 #include "logger/Logger.h"
 
-namespace ListUsers
-{
-	bool HandlePacket( ChatServer *server, User *user, const ChatPacket *packet );
-}
+bool ListUsers( ChatServer *server, User *user, const ChatPacket *packet );
 
 REGISTER_HANDLER( USER_LIST, ListUsers );
 
-bool ListUsers::HandlePacket( ChatServer *server, User *user, const ChatPacket *packet )
+bool ListUsers( ChatServer *server, User *user, const ChatPacket *packet )
 {
 	// we intentionally don't check for login status because we want
 	// external processes to see who's where and doing what.

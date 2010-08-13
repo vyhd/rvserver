@@ -5,23 +5,16 @@
 #include "model/Room.h"
 #include "network/DatabaseConnector.h"
 
-bool HandleKick( ChatServer *server, User *user, const ChatPacket *packet );
-bool HandleDisable( ChatServer *server, User *user, const ChatPacket *packet );
-bool HandleBan( ChatServer *server, User *user, const ChatPacket *packet );
-bool HandleUnban( ChatServer *server, User *user, const ChatPacket *packet );
-bool HandleMute( ChatServer *server, User *user, const ChatPacket *packet );
-bool HandleUnmute( ChatServer *server, User *user, const ChatPacket *packet );
-bool HandleQuery( ChatServer *server, User *user, const ChatPacket *packet );
-bool HandleClear( ChatServer *server, User *user, const ChatPacket *packet );
+bool ModAction( ChatServer *server, User *user, const ChatPacket *packet );
 
-REGISTER_HANDLER_FN( USER_KICK, HandleKick );
-REGISTER_HANDLER_FN( USER_DISABLE, HandleDisable );
-REGISTER_HANDLER_FN( USER_BAN, HandleBan );
-REGISTER_HANDLER_FN( USER_UNBAN, HandleUnban );
-REGISTER_HANDLER_FN( USER_MUTE, HandleMute );
-REGISTER_HANDLER_FN( USER_UNMUTE, HandleUnmute );
-REGISTER_HANDLER_FN( IP_QUERY, HandleQuery );
-REGISTER_HANDLER_FN( FORCE_CLEAR, HandleClear );
+REGISTER_HANDLER( USER_KICK, ModAction );
+REGISTER_HANDLER( USER_DISABLE, ModAction );
+REGISTER_HANDLER( USER_BAN, ModAction );
+REGISTER_HANDLER( USER_UNBAN, ModAction );
+REGISTER_HANDLER( USER_MUTE, ModAction );
+REGISTER_HANDLER( USER_UNMUTE, ModAction );
+REGISTER_HANDLER( IP_QUERY, ModAction );
+REGISTER_HANDLER( FORCE_CLEAR, ModAction );
 
 using namespace std;
 
@@ -50,6 +43,11 @@ inline User* GetTarget( ChatServer *server, User* user, const string &sName )
 		return NULL;
 
 	return target;
+}
+
+bool ModAction( ChatServer *server, User *user, const ChatPacket *packet )
+{
+	return false; /* no op */
 }
 
 /* a removal action results in the disconnection of the targeted client. */

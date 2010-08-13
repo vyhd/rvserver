@@ -6,14 +6,11 @@
 #include "logger/Logger.h"
 #include <cstdlib>
 
-namespace Login
-{
-	bool HandlePacket( ChatServer *server, User *user, const ChatPacket *packet );
-}
+bool Login( ChatServer *server, User *user, const ChatPacket *packet );
 
 REGISTER_HANDLER( USER_JOIN, Login );
 
-bool Login::HandlePacket( ChatServer *server, User* const user, const ChatPacket *packet )
+bool Login( ChatServer *server, User* const user, const ChatPacket *packet )
 {
 	// don't take this packet from a user that's already in
 	if( user->IsLoggedIn() )
@@ -33,7 +30,8 @@ bool Login::HandlePacket( ChatServer *server, User* const user, const ChatPacket
 	// set the user's name from the login packet
 	user->SetName( packet->sUsername );
 
-	// dispatch a message to the connector to check login status.
+	// Dispatch a message to the connector to check login. This will set
+	// the user's LoginState on completion, which is handled in ChatServer.
 	DatabaseConnector *conn = server->GetConnection();
 	conn->Login( user, packet->sMessage );
 

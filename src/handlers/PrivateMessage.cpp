@@ -1,13 +1,10 @@
 #include "packet/PacketHandler.h"
 
-namespace PrivateMessage
-{
-	bool HandlePacket( ChatServer *server, User *user, const ChatPacket *packet );
-}
+bool HandlePM( ChatServer *server, User *user, const ChatPacket *packet );
 
-REGISTER_HANDLER( USER_PM, PrivateMessage );
+REGISTER_HANDLER( USER_PM, HandlePM );
 
-bool PrivateMessage::HandlePacket( ChatServer *server, User *user, const ChatPacket *packet )
+bool HandlePM( ChatServer *server, User *user, const ChatPacket *packet )
 {
 	// handled, but ignored
 	if( !user->IsLoggedIn() || user->IsMuted() )

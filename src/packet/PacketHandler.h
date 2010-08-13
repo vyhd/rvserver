@@ -43,14 +43,9 @@ struct RegisterHandler
 	}
 };
 
-/* Use this to define a handler for a given code.
- * The function that gets passed is HandlePacket in the given namespace. */
-#define REGISTER_HANDLER( code, namespace ) \
-	static RegisterHandler g_##namespace##Handler##code( code, &namespace::HandlePacket )
-
-/* Use this to define a specific function to handle a code. */
-#define REGISTER_HANDLER_FN( code, fn ) \
-	static RegisterHandler g_Handler##code( code, &fn )
+/* Use this to define a specific function to handle a chat code. */
+#define REGISTER_HANDLER( code, func ) \
+	static RegisterHandler g_Handler##code( code, &func )
 
 #endif // PACKET_HANDLER_H
 

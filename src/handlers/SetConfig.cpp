@@ -1,10 +1,10 @@
 #include "packet/PacketHandler.h"
 
-static bool Handle( ChatServer *server, User *user, const ChatPacket *packet );
+static bool HandleSetConfig( ChatServer *server, User *user, const ChatPacket *packet );
 
-REGISTER_HANDLER_FN( CLIENT_CONFIG, Handle );
+REGISTER_HANDLER( CLIENT_CONFIG, HandleSetConfig );
 
-bool Handle( ChatServer *server, User *user, const ChatPacket *packet )
+bool HandleSetConfig( ChatServer *server, User *user, const ChatPacket *packet )
 {
 	user->SetPrefs( packet->sMessage );
 	return true;

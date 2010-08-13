@@ -4,11 +4,11 @@
 
 using namespace std;
 
-static bool CmdListRooms( ChatServer *server, User *user, const ChatPacket *packet );
+static bool ListRooms( ChatServer *server, User *user, const ChatPacket *packet );
 
-REGISTER_HANDLER_FN( ROOM_LIST, CmdListRooms );
+REGISTER_HANDLER( ROOM_LIST, ListRooms );
 
-bool CmdListRooms( ChatServer *server, User *user, const ChatPacket *packet )
+bool ListRooms( ChatServer *server, User *user, const ChatPacket *packet )
 {
 	const map<string,Room*> *rooms = server->GetRoomList()->GetRooms();
 
