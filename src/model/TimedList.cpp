@@ -102,6 +102,11 @@ void TimedList::Remove( const std::string &name )
 #endif
 }
 
+bool TimedList::HasName( const string &name ) const
+{
+	return m_NameEntries.find(name) != m_NameEntries.end();
+}
+
 void TimedList::Update()
 {
 	const time_t now = time(NULL);

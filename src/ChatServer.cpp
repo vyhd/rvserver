@@ -57,9 +57,11 @@ void ChatServer::Start()
 	// connect to the port specified in the configuration
 	m_pListener->Connect( m_pConfig->GetInt("ServerPort") );
 
-	// initialize the database connector if we haven't
-	if( !m_pConnector )
-		m_pConnector = new DatabaseConnector( m_pConfig );
+	// Remove the connector, if it exists, and re-create it
+	if( m_pConnector )
+		delete m_pConnector;
+
+	m_pConnector = new DatabaseConnector( m_pConfig );
 
 	// Remove the RoomList, if it exists, and re-create it
 	if( m_pRooms )
@@ -383,7 +385,7 @@ void ChatServer::HandleLoginState( User *user )
 	// these states aren't handled here and should never be reached
 	case LOGIN_NONE:
 	case LOGIN_CHECKING:
-		LOG->System( "I'a Dagon! State %i", user->GetLoginState() );
+		LOG->System( "Hit an unwanted LoginState! State %i", user->GetLoginState() );
 		break;
 	}
 
@@ -447,10 +449,8 @@ void ChatServer::WallMessage( const std::string &sMessage )
 	{
 		User *user = (*it);
 
-		if( !user->IsMod() )
-			continue;
-
-		user->Write( sPacket );
+		if( user->IsMod() )
+			user->Write( sPacket );
 	}
 }
 

@@ -39,6 +39,8 @@ public:
 	void Add( const ListEntry &entry );
 	void Remove( const std::string &name );
 
+	bool HasName( const std::string &name ) const;
+
 	// removes entries for which time has expired
 	void Update();
 
