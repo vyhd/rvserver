@@ -178,7 +178,10 @@ void Logger::Debug( const char *fmt, ... )
 
 	/* write the string to the debug file and stdout. */
 	if( m_pDebugLog )
+	{
 		WriteLine( buf, m_pDebugLog );
+		Stdout( buf );
+	}
 }
 
 void Logger::Stdout( const char *fmt, ... )
