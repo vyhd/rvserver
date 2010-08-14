@@ -2,21 +2,40 @@
  * we can stuff most of them into one file and share routines to save code. */
 
 #include "packet/PacketHandler.h"
-#include "model/Room.h"
 #include "network/DatabaseConnector.h"
+#include "model/Room.h"
+#include "logger/Logger.h"
+#include "util/StringUtil.h"
 
-bool ModAction( ChatServer *server, User *user, const ChatPacket *packet );
+/* A moderation action that involves a moderator and a user */
+bool UserAction( ChatServer *server, User *user, const ChatPacket *packet );
 
-REGISTER_HANDLER( USER_KICK, ModAction );
-REGISTER_HANDLER( USER_DISABLE, ModAction );
-REGISTER_HANDLER( USER_BAN, ModAction );
-REGISTER_HANDLER( USER_UNBAN, ModAction );
-REGISTER_HANDLER( USER_MUTE, ModAction );
-REGISTER_HANDLER( USER_UNMUTE, ModAction );
-REGISTER_HANDLER( IP_QUERY, ModAction );
-REGISTER_HANDLER( FORCE_CLEAR, ModAction );
+REGISTER_HANDLER( USER_KICK, UserAction );
+REGISTER_HANDLER( USER_DISABLE, UserAction );
+REGISTER_HANDLER( USER_BAN, UserAction );
+REGISTER_HANDLER( USER_UNBAN, UserAction );
+REGISTER_HANDLER( USER_MUTE, UserAction );
+REGISTER_HANDLER( USER_UNMUTE, UserAction );
+REGISTER_HANDLER( IP_QUERY, UserAction );
+
+
+/* These are handled separately because they don't share code paths. */
+bool ForceClear( ChatServer *server, User *user, const ChatPacket *packet );
+bool ModChat( ChatServer *server, User *user, const ChatPacket *packet );
+
+REGISTER_HANDLER( FORCE_CLEAR, ForceClear );
+REGISTER_HANDLER( MOD_CHAT, ModChat );
+
 
 using namespace std;
+
+/* Internally used functions */
+bool Remove( User *target, uint16_t iCode );
+bool Ban( ChatServer *server, const string &sName );
+bool Unban( ChatServer *server, const string &sName );
+bool Mute( ChatServer *server, User *user, User *target, const ChatPacket *packet );
+bool Unmute( ChatServer *server, User *user, User *target, const ChatPacket *packet );
+bool Query( ChatServer *server, User *user, User *target );
 
 const char* GetAction( uint16_t iCode )
 {
@@ -33,8 +52,29 @@ const char* GetAction( uint16_t iCode )
 	}
 }
 
-/* returns a valid target if 'user' if sName references a user. */
-inline User* GetTarget( ChatServer *server, User* user, const string &sName )
+/* returns true if we should display a mod message when an action is taken. */
+bool DisplayMessage( User *target, uint16_t code )
+{
+	switch( code )
+	{
+	/* always display messages that can potentially affect users */
+	case USER_BAN:
+	case USER_UNBAN:
+		return true;
+
+	/* these are currently handled by the client, due to status updating */
+	case USER_MUTE:
+	case USER_UNMUTE:
+		return false;
+
+	/* return true if they affect a user who's currently online */
+	default:
+		return (target != NULL);
+	}
+}
+
+/* returns a valid target if sName references a user on the server. */
+inline User* GetTarget( ChatServer *server, const string &sName )
 {
 	User* target = server->GetUserByName( sName );
 
@@ -45,45 +85,47 @@ inline User* GetTarget( ChatServer *server, User* user, const string &sName )
 	return target;
 }
 
-bool ModAction( ChatServer *server, User *user, const ChatPacket *packet )
+bool UserAction( ChatServer *server, User *user, const ChatPacket *packet )
 {
-	return false; /* no op */
+	if( !user->IsMod() )
+	{
+		LOG->System( "%s tried to use mod command (%d) without permission, ignoring.", user->GetName().c_str(), packet->iCode );
+		return false;
+	}
+
+	User *target = GetTarget( server, packet->sMessage );
+
+	/* if we're affecting a user, let the moderators know what's happening */
+	if( DisplayMessage(target, packet->iCode) )
+	{
+		const string sMessage = target->GetName() + " was "
+			+ GetAction(packet->iCode) + " by " + user->GetName();
+
+		server->WallMessage( sMessage );
+	}
+
+	switch( packet->iCode )
+	{
+	case USER_KICK:
+	case USER_DISABLE:	return Remove( target, packet->iCode );
+	case USER_BAN:		Remove(target, USER_BAN); return Ban( server, packet->sMessage );
+	case USER_UNBAN:	return Unban( server, packet->sMessage );
+	case USER_MUTE:		return Mute( server, user, target, packet );
+	case USER_UNMUTE:	return Unmute( server, user, target, packet );
+	case IP_QUERY:		return Query( server, user, target );
+	default:
+		LOG->Debug( "Hit a ModAction I don't know how to handle! Action %d", packet->iCode );
+		return false;
+	}
 }
 
 /* a removal action results in the disconnection of the targeted client. */
-/* Intentionally re-broken 01/08/2010 to re-enable 'kickspeak' bug. */
-bool HandleRemoveAction( ChatServer *server, User *user, const ChatPacket *packet )
+bool Remove( User *target, uint16_t iCode )
 {
-	if( !user->IsMod() )
-		return false;
-
-	User *target = GetTarget( server, user, packet->sMessage );
-
-	const string sMessage = packet->sMessage + " was "
-		+ GetAction(packet->iCode) + " by " + user->GetName();
-
-	/* HACK: don't modchat for mute, unmute, or ban. Every time those
-	 * are called, we incur a lookup penalty in the ban/mute list, so
-	 * we want them to mean it. */
-	switch( packet->iCode )
-	{
-		case USER_BAN:
-		case USER_MUTE:
-		case USER_UNMUTE:
-			if( target == NULL )
-				return false;
-	};
-
-	// handle database connectivity
-	if( packet->iCode == USER_BAN )
-		server->GetConnection()->Ban( target->GetName() );
-
-	server->WallMessage( sMessage );
-
-	// notify the target about the taken action, if they exist
 	if( target != NULL )
 	{
-		ChatPacket notify( packet->iCode );
+		/* Just pass on the code. The client will kick/disable/ban as needed. */
+		ChatPacket notify( iCode );
 		target->Write( notify.ToString() );
 		target->Kill();
 	}
@@ -91,67 +133,58 @@ bool HandleRemoveAction( ChatServer *server, User *user, const ChatPacket *packe
 	return true;
 }
 
-/* A mute action is simply the handler for a mute/unmute command.
- * the client handles the message, so we just broadcast the packet. */
-bool HandleMuteAction( ChatServer *server, User *user, const ChatPacket *packet, bool bMute )
+bool Ban( ChatServer *server, const string &sName )
 {
-	if( !user->IsMod() )
-		return false;
-
-	User* target = GetTarget( server, user, packet->sMessage );
-
-	if( target == NULL )
-		return false;
-
-	target->SetMuted( bMute );
-
-	// pass on the mute (or unmute), who it affected, and who did it
-	ChatPacket msg( packet->iCode, target->GetName(), user->GetName() );
-	server->Broadcast( msg );
+	// allow banning people even if they're not in the chat room
+	server->GetBanList()->Add( sName );
+	server->GetConnection()->Ban( sName );
 
 	return true;
 }
 
-bool HandleKick( ChatServer *server, User *user, const ChatPacket *packet )
+bool Unban( ChatServer *server, const string &sName )
 {
-	return HandleRemoveAction( server, user, packet );
-}
+	// allow unbanning people even if they're not in the chat room
+	server->GetBanList()->Remove( sName );
+	server->GetConnection()->Unban( sName );
 
-bool HandleDisable( ChatServer *server, User *user, const ChatPacket *packet )
-{
-	return HandleRemoveAction( server, user, packet );
-}
-
-// XXX: doesn't actually ban right now
-bool HandleBan( ChatServer *server, User *user, const ChatPacket *packet )
-{
-	return HandleRemoveAction( server, user, packet );
-}
-
-// XXX: won't work right now
-bool HandleUnban( ChatServer *server, User *user, const ChatPacket *packet )
-{
-	server->GetConnection()->Unban( packet->sMessage );
 	return true;
 }
 
-bool HandleMute( ChatServer *server, User *user, const ChatPacket *packet )
+bool Mute( ChatServer *server, User *user, User *target, const ChatPacket *packet )
 {
-	return HandleMuteAction( server, user, packet, true );
+	server->GetMuteList()->Add( packet->sMessage );
+
+	if( target )
+	{
+		target->SetMuted( true );
+
+		// pass on the mute, who it affected, and who did it
+		ChatPacket msg( USER_MUTE, target->GetName(), user->GetName() );
+		server->Broadcast( msg );
+	}
+
+	return true;
 }
 
-bool HandleUnmute( ChatServer *server, User *user, const ChatPacket *packet )
+bool Unmute( ChatServer *server, User *user, User *target, const ChatPacket *packet )
 {
-	return HandleMuteAction( server, user, packet, false );
+	server->GetMuteList()->Remove( packet->sMessage );
+
+	if( target )
+	{
+		target->SetMuted( false );
+
+		// pass on the unmute, who it affected, and who did it
+		ChatPacket msg( USER_UNMUTE, target->GetName(), user->GetName() );
+		server->Broadcast( msg );
+	}
+
+	return true;
 }
 
-bool HandleQuery( ChatServer *server, User *user, const ChatPacket *packet )
+bool Query( ChatServer *server, User *user, User *target )
 {
-	if( !user->IsMod() )
-		return false;
-
-	User *target = GetTarget( server, user, packet->sUsername );
-
 	if( target == NULL )
 		return false;
 
@@ -159,16 +192,24 @@ bool HandleQuery( ChatServer *server, User *user, const ChatPacket *packet )
 	ChatPacket query( IP_QUERY, target->GetName(), user->GetIP() );
 	user->Write( query.ToString() );
 
-	/* send a global message about this action */
-	string sMessage = target->GetName() + " was " +
-		GetAction(packet->iCode) + " by " + user->GetName();
+	return true;
+}
+
+bool ModChat( ChatServer *server, User *user, const ChatPacket *packet )
+{
+	if( !user->IsMod() )
+		return false;
+
+	// TODO: handle this in a more standard fashion, not as a hack.
+	const string sMessage = StringUtil::Format( "{%s} %s",
+		user->GetName().c_str(), packet->sMessage.c_str() );
 
 	server->WallMessage( sMessage );
 
 	return true;
 }
 
-bool HandleClear( ChatServer *server, User *user, const ChatPacket *packet )
+bool ForceClear( ChatServer *server, User *user, const ChatPacket *packet )
 {
 	if( !user->IsMod() || !user->GetRoom() )
 		return false;
