@@ -9,6 +9,7 @@
 #include <string>
 #include "network/SocketListener.h"
 #include "model/RoomList.h"
+#include "model/TimedList.h"
 
 class ChatPacket;
 class Config;
@@ -60,8 +61,11 @@ public:
 	/* retrieves a pointer to the database connector for login/prefs */
 	DatabaseConnector* GetConnection() { return m_pConnector; }
 
+	TimedList* GetBanList() { return &m_BanList; }
+	TimedList* GetMuteList() { return &m_MuteList; }
+
 protected:
-	/* given iSocket, creates a user with that socket */
+	/* assigns a user to the given socket */
 	void AddUser( unsigned iSocket );
 
 	/* disconnects the given user from the server */
@@ -97,6 +101,12 @@ private:
 
 	/* handles all room logic */
 	RoomList *m_pRooms;
+
+	/* handles users time banned server-side */
+	TimedList m_BanList;
+
+	/* handles users muted server-side */
+	TimedList m_MuteList;
 
 	/* set of all users being updated */
 	std::list<User*> m_Users;

@@ -349,12 +349,16 @@ void ChatServer::HandleLoginState( User *user )
 	case LOGIN_SUCCESS:
 	{
 		// if this user is banned, send them a message and cut the connection
-		if( user->GetLevel() == m_cBanLevel )
+		if( user->GetLevel() == m_cBanLevel || m_BanList.HasName(user->GetName()) )
 		{
 			user->Write( ChatPacket(USER_BAN, BLANK, BLANK).ToString() );
 			user->Kill();
 			return;
 		}
+
+		// mute the user if they're in the mute list
+		if( m_MuteList.HasName(user->GetName()) )
+			user->SetMuted( true );
 
 		// if this user has a mod level, set them as mod
 		if( m_sModLevels.find(user->GetLevel()) != string::npos )
