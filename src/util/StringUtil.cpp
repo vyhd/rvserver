@@ -69,6 +69,44 @@ void StringUtil::Split( const string &in, vector<char> &add, const char delim )
 		add.push_back( vsData[i][0] );
 }
 
+/* Parses a string and returns the total elapsed seconds of the given tokens.
+ * Supported tokens: w (week), d (day), h (hour), m (minute), s (second).
+ * Usage is e.g. "1w 4d 8m" for the time spanned by 1 week, 4 days, 8 minutes.
+ */
+time_t StringUtil::ParseTime( const std::string &sMessage )
+{
+	time_t weeks, days, hours, minutes, seconds;
+	weeks = days = hours = minutes = seconds = 0;
+
+	vector<string> parts;
+	Split( sMessage, parts, ' ' );
+
+	for( unsigned i = 0; i < parts.size(); ++i )
+	{
+		unsigned value = 0;
+		sscanf( parts[i].c_str(), "%u", &value );
+
+		char cLastChar = parts[i].at( parts[i].length()-1 );
+
+		switch( cLastChar )
+		{
+		case 'w': case 'W': weeks = value; break;
+		case 'd': case 'D': days = value; break;
+		case 'h': case 'H': hours = value; break;
+		case 'm': case 'M': minutes = value; break;
+		case 's': case 'S': seconds = value; break;
+		};
+	}
+
+	time_t total = seconds + (minutes*60) + (hours*60*60) + (days*24*60*60) + (weeks*7*24*60*60);
+
+	// protection against overflow and negative times
+	if( total < 0 )
+		return 0;
+
+	return total;
+}
+
 /* 
  * Copyright (c) 2009-10 Mark Cannon ("Vyhd")
  *

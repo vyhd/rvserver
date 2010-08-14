@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <ctime>
 
 /* The STL is fairly lacking in some functions, so we make our own. */
 
@@ -25,6 +26,9 @@ namespace StringUtil
 	/* splits in with delim into chars, which are inserted into add. */
 	void Split( const std::string &in, std::vector<char> &add,
 		const char delim );
+
+	/* parses a string describing a period of time. See .cpp for more info. */
+	time_t ParseTime( const std::string &sMessage );
 }
 
 #endif // STRING_UTIL_H
