@@ -37,7 +37,7 @@ bool Mute( ChatServer *server, User *user, User *target, const ChatPacket *packe
 bool Unmute( ChatServer *server, User *user, User *target, const ChatPacket *packet );
 bool Query( ChatServer *server, User *user, User *target );
 
-const char* GetAction( uint16_t iCode )
+const string GetAction( uint16_t iCode )
 {
 	switch( iCode )
 	{
@@ -49,27 +49,6 @@ const char* GetAction( uint16_t iCode )
 	case USER_UNMUTE:	return "unmuted";
 	case IP_QUERY:		return "IP queried";
 	default:		return "eaten";
-	}
-}
-
-/* returns true if we should display a mod message when an action is taken. */
-bool DisplayMessage( User *target, uint16_t code )
-{
-	switch( code )
-	{
-	/* always display messages that can potentially affect users */
-	case USER_BAN:
-	case USER_UNBAN:
-		return true;
-
-	/* these are currently handled by the client, due to status updating */
-	case USER_MUTE:
-	case USER_UNMUTE:
-		return false;
-
-	/* return true if they affect a user who's currently online */
-	default:
-		return (target != NULL);
 	}
 }
 
@@ -95,12 +74,12 @@ bool UserAction( ChatServer *server, User *user, const ChatPacket *packet )
 
 	User *target = GetTarget( server, packet->sMessage );
 
-	/* if we're affecting a user, let the moderators know what's happening */
-	if( DisplayMessage(target, packet->iCode) )
+	/* if we're affecting a user, let the moderators know what's happening.
+	 * MUTE and UNMUTE handle themselves, so we don't print in those cases. */
+	if( packet->iCode != USER_MUTE && packet->iCode != USER_UNMUTE )
 	{
-		const string sMessage = target->GetName() + " was "
-			+ GetAction(packet->iCode) + " by " + user->GetName();
-
+		string sMessage = (target) ? target->GetName() : packet->sMessage;
+		sMessage += " was " + GetAction(packet->iCode) + " by " + user->GetName();
 		server->WallMessage( sMessage );
 	}
 
