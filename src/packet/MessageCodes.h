@@ -26,8 +26,12 @@ enum MessageCode
 	IP_QUERY	= 14,
 	DEBUG_COMMAND	= 15,
 
-	// timedban command
+	// timed mod commands
 	USER_TIMEDBAN	= 16,
+	USER_TIMEDMUTE	= 17,
+
+	// mod chat command
+	MOD_CHAT	= 18,
 
 	// login responses
 	ACCESS_GRANTED	= 100,
