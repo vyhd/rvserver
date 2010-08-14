@@ -1,3 +1,6 @@
+/* The spinlock is occasionally hanging on itself. I've disabled it for now.
+ * If this causes any problems, it's still better than hanging the server... */
+
 #include <cerrno>
 #include "network/DatabaseWorker.h"
 #include "model/User.h"
@@ -68,9 +71,9 @@ DatabaseWorker::~DatabaseWorker()
 
 void DatabaseWorker::AddRequest( Request *req )
 {
-	m_QueueLock.Lock();
+//	m_QueueLock.Lock();
 	m_Requests.push( req );
-	m_QueueLock.Unlock();
+//	m_QueueLock.Unlock();
 }
 
 Request* DatabaseWorker::PopRequest()
@@ -78,12 +81,12 @@ Request* DatabaseWorker::PopRequest()
 	if( m_Requests.empty() )
 		return NULL;
 
-	m_QueueLock.Lock();
+//	m_QueueLock.Lock();
 
 	Request *ret = m_Requests.front();
 	m_Requests.pop();
 
-	m_QueueLock.Unlock();
+//	m_QueueLock.Unlock();
 
 	return ret;
 }
