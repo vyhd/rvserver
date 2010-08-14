@@ -2,6 +2,7 @@ Two notes about this:
 
 - Configuration is loaded from ~/.rvserver for the running user. The file
   in the pack (config.txt) contains all the valid configuration options.
+  Move it there once you get a chance.
 
 - Logs are saved in whatever directory LogPath is set to. If it doesn't exist,
   the binary will do its best to try and create it. (No guarantees.)
