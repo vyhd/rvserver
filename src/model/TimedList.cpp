@@ -1,4 +1,6 @@
+#include <climits>
 #include "TimedList.h"
+#include "util/StringUtil.h"
 
 // testing:
 //#define STANDALONE
@@ -39,8 +41,17 @@ TimedList::~TimedList()
 	m_TimeEntries.clear();
 }
 
-void TimedList::Add( const ListEntry &entry )
+void TimedList::Add( const string &sName )
 {
+	Add( ListEntry(sName,LONG_MAX) );
+}
+
+void TimedList::Add( const ListEntry &entry_ )
+{
+	// lowercase the name so we can compare case insensitively
+	ListEntry entry( entry_ );
+	StringUtil::ToLower( entry.name );
+
 	// Do we already have this entry?
 	ListEntry *pEntry = m_NameEntries[entry.name];
 
@@ -50,13 +61,16 @@ void TimedList::Add( const ListEntry &entry )
 		pEntry = &m_Entries.back();
 	}
 
-	m_NameEntries[entry.name] = pEntry;
-	m_TimeEntries[entry.time] = pEntry;
+	m_NameEntries.insert( NameEntry(entry.name, pEntry) );
+	m_TimeEntries.insert( TimeEntry(entry.time, pEntry) );
 }
 
-void TimedList::Remove( const std::string &name )
+void TimedList::Remove( const string &name_ )
 {
 	uint64_t start = getusecs();
+
+	string name = name_;
+	StringUtil::ToLower( name );
 
 	ListEntry *pEntry = NULL;
 

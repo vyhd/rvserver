@@ -2,8 +2,8 @@
  * referenced in two other structures that sort by each. We're not using very
  * much memory overall, so we can afford more memory to make lookups faster.
  *
- * In the event of idiotic moderators adding garbage to this, we'll simply
- * rebuild the list if it reaches an unreasonably high amount of names.
+ * All names are stored as lowercase, for sanity's sake. Storing them as is
+ * would mean much worse searches, and we can't find them case agnostically.
  */
 
 #ifndef TIMED_LIST_H
@@ -21,13 +21,14 @@ struct ListEntry
 	time_t time;
 
 	ListEntry( std::string name_, time_t time_ ) : name(name_), time(time_) { }
+	ListEntry( const ListEntry &cpy ) : name(cpy.name), time(cpy.time) { }
 };
 
 // convenience aliases
 typedef std::map<std::string,ListEntry*> NameMap;
 typedef std::pair<std::string,ListEntry*> NameEntry;
 
-typedef std::map<time_t,ListEntry*> TimeMap;
+typedef std::multimap<time_t,ListEntry*> TimeMap;
 typedef std::pair<time_t,ListEntry*> TimeEntry;
 
 class TimedList
@@ -36,6 +37,10 @@ public:
 	TimedList();
 	~TimedList();
 
+	/* Defaults to highest possible time */
+	void Add( const std::string &name );
+
+	/* Allows specification of a time */
 	void Add( const ListEntry &entry );
 	void Remove( const std::string &name );
 
