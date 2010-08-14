@@ -41,7 +41,6 @@ ChatPacket::ChatPacket( uint16_t iCode, const std::string &sUsername_,
 	this->r = r;
 	this->g = g;
 	this->b = b;
-	
 }
 
 ChatPacket::ChatPacket( const string &sData ) : iCode( INVALID_CODE )

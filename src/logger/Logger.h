@@ -54,7 +54,7 @@ private:
 
 	// make sure only one call writes to any given file at a time.
 	// this is slower than it could be, but the benefit of having
-	// a spinlock per file is probably negated by it complexity...
+	// a spinlock per file is probably negated by its complexity...
 	Spinlock *m_pFileLock;
 };
 
