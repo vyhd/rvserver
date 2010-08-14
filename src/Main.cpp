@@ -19,6 +19,8 @@ using namespace std;
 ChatServer *g_pServer = NULL;
 Config *g_pConfig = NULL;
 
+int g_HandlerSemaphore = 0;
+
 int g_LockFile = -1;
 
 const char* const LOCK_FILE_PATH = "/tmp/rvserver-lock";
@@ -26,13 +28,13 @@ const char* const LOCK_FILE_PATH = "/tmp/rvserver-lock";
 /* On caught signal, add a message and flush logs before exiting. */
 static void clean_exit( int signum )
 {
-	// concurrency guard: only run this handler once
-	static bool g_bInHandler = false;
+	g_HandlerSemaphore++;
 
-	if( g_bInHandler )
-		return;
-
-	g_bInHandler = true;
+	if( g_HandlerSemaphore > 1 )
+	{
+		LOG->Stdout( "Alright, you insisted, stopping now." );
+		exit( signum );
+	}
 
 	/* Tell the server to clean up its connections. This will
 	 * take a while: all users need to be removed from the server
@@ -102,7 +104,7 @@ static void daemonize()
 	/* Check for the lock file. If it exists, exit. */
 	if( access(LOCK_FILE_PATH, F_OK) == 0 )
 	{
-		LOG->Stdout( "Lock file exists! Exiting..." );
+		LOG->Stdout( "Lock file \"%s\" already exists! Exiting...", LOCK_FILE_PATH );
 		clean_exit( EXIT_SUCCESS );
 	}
 
@@ -134,7 +136,7 @@ static void daemonize()
 	}
 
 	/* Create our lock file and fork the daemon process. */
-	g_LockFile = open( LOCK_FILE_PATH, O_CREAT | O_EXCL | O_FSYNC, 0755 );
+	g_LockFile = open( LOCK_FILE_PATH, O_CREAT | O_EXCL | O_SYNC, 0755 );
 
 	if( g_LockFile < 0 )
 	{
@@ -145,6 +147,7 @@ static void daemonize()
 	/* Write the PID to the lock file (text, for the control script) */
 	char sPID[12];
 	sprintf( sPID, "%i\n", getpid() );
+	printf( sPID );
 	write( g_LockFile, sPID, sizeof(sPID) );
 
 	/* Stop writing to stdout. We've daemonized and it'll get annoying. */
