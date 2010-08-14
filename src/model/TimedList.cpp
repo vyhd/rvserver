@@ -1,13 +1,7 @@
 #include <climits>
 #include "TimedList.h"
 #include "util/StringUtil.h"
-
-// testing:
-//#define STANDALONE
-
-#if !defined(STANDALONE)
 #include "logger/Logger.h"
-#endif
 
 namespace
 {
@@ -43,23 +37,29 @@ TimedList::~TimedList()
 
 void TimedList::Add( const string &sName )
 {
+	LOG->Debug( "TimedList::Add( %s )", sName.c_str() );
 	Add( ListEntry(sName,LONG_MAX) );
 }
 
 void TimedList::Add( const ListEntry &entry_ )
 {
+	LOG->Debug( "TimedList::Add( %s, %d )", entry_.name.c_str(), entry_.time );
+
 	// lowercase the name so we can compare case insensitively
 	ListEntry entry( entry_ );
 	StringUtil::ToLower( entry.name );
 
-	// Do we already have this entry?
-	ListEntry *pEntry = m_NameEntries[entry.name];
+	// if we have the entry already, just update it and return
+	NameMap::iterator it = m_NameEntries.find( entry.name );
 
-	if( !pEntry )
+	if( it != m_NameEntries.end() )
 	{
-		m_Entries.push_back( entry );
-		pEntry = &m_Entries.back();
+		it->second->time = entry.time;
+		return;
 	}
+
+	m_Entries.push_back( entry );
+	ListEntry *pEntry = &m_Entries.back();
 
 	m_NameEntries.insert( NameEntry(entry.name, pEntry) );
 	m_TimeEntries.insert( TimeEntry(entry.time, pEntry) );
@@ -67,6 +67,8 @@ void TimedList::Add( const ListEntry &entry_ )
 
 void TimedList::Remove( const string &name_ )
 {
+	LOG->Debug( "TimedList::Remove( %s )", name_.c_str() );
+
 	uint64_t start = getusecs();
 
 	string name = name_;
@@ -87,7 +89,7 @@ void TimedList::Remove( const string &name_ )
 		return;
 
 	// find this entry in the main list and erase it
-	m_NameEntries.erase( pEntry->name );
+	m_NameEntries.erase( name );
 	m_TimeEntries.erase( pEntry->time );
 
 	list<ListEntry>::iterator it = m_Entries.begin();
@@ -99,9 +101,7 @@ void TimedList::Remove( const string &name_ )
 
 	if( it == m_Entries.end() )
 	{
-#if !defined(STANDALONE)
 		LOG->System( "What? Coherency problem between main entry list and lookup lists..." );
-#endif
 		return;	// nothing we can do
 	}
 
@@ -109,16 +109,15 @@ void TimedList::Remove( const string &name_ )
 
 	uint64_t end = getusecs();
 
-#if defined(STANDALONE)
-	printf( "Removing \"%s\" took %llu usecs.\n", name.c_str(), end - start );
-#else
 	LOG->Debug( "Removing \"%s\" took %llu usecs.", name.c_str(), end - start );
-#endif
 }
 
 bool TimedList::HasName( const string &name ) const
 {
-	return m_NameEntries.find(name) != m_NameEntries.end();
+	bool ret = m_NameEntries.find(name) != m_NameEntries.end();
+
+	LOG->Debug( "TimedList::HasName( %s ) returning %d", name.c_str(), int(ret) );
+	return ret;
 }
 
 void TimedList::Update()
@@ -133,11 +132,7 @@ void TimedList::Update()
 			break;
 
 		ListEntry *pEntry = it->second;
-#if defined(STANDALONE)
-		printf( "Removing entry for \"%s\" (now = %u, then = %u)\n", pEntry->name.c_str(), now, pEntry->time );
-#else
 		LOG->Debug( "Removing entry for \"%s\" (now = %u, then = %u)\n", pEntry->name.c_str(), now, pEntry->time );
-#endif
 		Remove( pEntry->name );
 	}
 }
@@ -148,7 +143,7 @@ void TimedList::DumpNames()
 	int i = 0;
 
 	for( ; it != m_NameEntries.end(); ++it )
-		printf( "Name entry %u: %s (%u)\n", ++i, it->first.c_str(), it->second->time );
+		printf( "Name entry %u: %s (%li)\n", ++i, it->first.c_str(), it->second->time );
 }
 
 void TimedList::DumpTimes()
@@ -157,38 +152,5 @@ void TimedList::DumpTimes()
 	int i = 0;
 
 	for( ; it != m_TimeEntries.end(); ++it )
-		printf( "Time entry %u: %s (%u)\n", ++i, it->second->name.c_str(), it->first );
+		printf( "Time entry %u: %s (%li)\n", ++i, it->second->name.c_str(), it->first );
 }
-
-#if defined(STANDALONE)
-int main()
-{
-	TimedList list;
-
-	ListEntry entry( "Fire_Adept", 1 );
-
-	list.Add( entry );
-	list.Add( ListEntry("monkeymom2",	2) );
-	list.Add( ListEntry("Cosmos",		3) );
-	list.Add( ListEntry("hiker",		4) );
-	list.Add( ListEntry("henner",		5) );
-	list.Add( ListEntry("Muse",		6) );
-	list.Add( ListEntry("Sarah",		7) );
-	list.Add( ListEntry("kikori_kid",	8) );
-	list.Add( ListEntry("Chroz",		9) );
-
-	list.DumpNames();
-	printf( "-----\n" );
-	list.DumpTimes();
-
-	printf( "Updating, which should remove everything...\n" );
-
-	list.Update();
-
-	list.DumpNames();
-	printf( "-----\n" );
-	list.DumpTimes();
-
-	return 0;
-}
-#endif
