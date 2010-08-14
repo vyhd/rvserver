@@ -1,3 +1,6 @@
+// set 1 if you want the server to daemonize on startup
+Daemonize=0
+
 // the port this server listens on
 ServerPort=7005
 
@@ -8,6 +11,10 @@ DatabaseHost=www.runevillage.com
 LoginPage=/ThePub/authenticate.php
 ConfigPage=/ThePub/chatconfig.php
 BanPage=/ThePub/chatban.php
+
+// Read/write timeouts for database access, in milliseconds
+DatabaseReadTimeout=1000
+DatabaseWriteTimeout=1000
 
 // if the server can't load config, default to this
 DefaultConfig=theme|Classic|red|0|green|0|blue|0|freezeChat|false|ignoreColors|false|timeStamp|false|beep|true|bleep|true|audio|true
@@ -33,4 +40,4 @@ LogPath=/var/log/rvserver/
 
 // If true, all chat lines are output to stdout
 ChatOutput=1
-DebugMode=0
+DebugMode=1

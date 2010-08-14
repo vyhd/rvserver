@@ -170,11 +170,6 @@ static void SetUpSignalHandlers()
 
 int main( int argc, char **argv )
 {
-	daemonize();
-	SetUpSignalHandlers();
-
-	/* Everything past here runs only in the daemon. */
-
 	g_pConfig = new Config;
 
 	// load configuration
@@ -184,6 +179,13 @@ int main( int argc, char **argv )
 		delete g_pConfig;
 		return 1;
 	}
+
+	if( g_pConfig->GetBool("Daemonize") )
+		daemonize();
+
+	SetUpSignalHandlers();
+
+	/* Everything past here runs only in the daemon. */
 
 	const char* const LOG_PATH = g_pConfig->Get( "LogPath" );
 
