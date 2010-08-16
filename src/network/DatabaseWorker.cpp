@@ -307,6 +307,8 @@ void DatabaseWorker::DoBan( Request *req, bool bBan )
 	const string sSafeName = URLEncoding::Encode( sName );
 	const string sMessage = Format( "username=%s&action=%s",
 		sSafeName.c_str(), action );
+
+	SendPOST( m_sBanPage, sMessage );
 }
 
 const char* DatabaseWorker::SendPOST( const string &sForm, const string &params )
