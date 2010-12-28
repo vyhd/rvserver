@@ -29,6 +29,9 @@ namespace StringUtil
 
 	/* parses a string describing a period of time. See .cpp for more info. */
 	time_t ParseTime( const std::string &sMessage );
+
+	/* returns a string describing the elapsed period of time */
+	std::string TimeToString( time_t time );
 }
 
 #endif // STRING_UTIL_H

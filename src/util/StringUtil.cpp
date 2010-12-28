@@ -12,6 +12,13 @@ extern "C"
 
 using namespace std;
 
+/* multipliers to represent the given amount of time in seconds */
+const unsigned MINUTE = 60;
+const unsigned HOUR = MINUTE * 60;
+const unsigned DAY = HOUR * 24;
+const unsigned WEEK = DAY * 7;
+const unsigned YEAR = WEEK * 52;
+
 void StringUtil::ToLower( std::string &in )
 {
 	transform( in.begin(), in.end(), in.begin(), tolower );
@@ -91,26 +98,72 @@ time_t StringUtil::ParseTime( const std::string &sMessage )
 
 		switch( cLastChar )
 		{
-		case 'w': case 'W': weeks = value; break;
-		case 'd': case 'D': days = value; break;
-		case 'h': case 'H': hours = value; break;
-		case 'm': case 'M': minutes = value; break;
+		case 'w': case 'W': weeks = value * WEEK; break;
+		case 'd': case 'D': days = value * DAY; break;
+		case 'h': case 'H': hours = value * HOUR; break;
+		case 'm': case 'M': minutes = value * MINUTE; break;
 		case 's': case 'S': seconds = value; break;
 		}
 	}
 
-	time_t total = seconds;
-
-	if( minutes )	total += minutes*60;
-	if( hours )	total += hours*60*60;
-	if( days )	total += days*24*60*60;
-	if( weeks )	total += weeks*7*24*60*60;
+	time_t total = seconds + minutes + hours + days + weeks;
 
 	// protection against overflow and negative times
 	if( total < 0 )
 		return 0;
 
 	return total;
+}
+
+string print( unsigned val, const char *name )
+{
+	static char buffer[16];
+
+	snprintf( buffer, 16, "%d %s%c", val, name, val == 1 ? '\0' : 's' );
+	return string(buffer);
+}
+
+const char* NAMES[5] = { "week", "day", "hour", "minute", "second" };
+
+/* Returns a string that describes the given amount of time as
+ * succinctly as possible (ignoring months: too much processing). */
+string StringUtil::TimeToString( time_t time )
+{
+	if( time > YEAR )
+		return "a really long time";
+
+	unsigned times[5] = { 0, 0, 0, 0, 0 };
+	
+	times[0] = (time / WEEK);	time %= WEEK;
+	times[1] = (time / DAY);	time %= DAY;
+	times[2] = (time / HOUR);	time %= HOUR;
+	times[3] = (time / MINUTE);	time %= MINUTE;
+	times[4] = time;
+
+	string ret;
+
+	{
+		vector<string> entries;
+
+		for( unsigned i = 0; i < 5; ++i )
+			if( times[i] != 0 )
+				entries.push_back( print(times[i], NAMES[i]) );
+
+		const unsigned len = entries.size();
+
+		for( unsigned i = 0; i < len; ++i )
+		{
+			if( i == (len-1) && len != 1 )
+				ret += "and ";
+
+			ret += entries[i];
+
+			if( i < (len-1) )
+				ret += ", ";
+		}
+	}
+
+	return ret;
 }
 
 /* 
