@@ -3,7 +3,7 @@
 
 using namespace std;
 
-/* 128-byte lookup table. 1 means the character is safe for a URL,
+/* 256-byte ASCII lookup. 1 means the character is safe for a URL,
  * 0 means the character must be escaped (e.g. ' ' -> "%20" ) */
 static const char IS_SAFE[256] =
 {

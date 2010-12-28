@@ -3,6 +3,9 @@
 #include "logger/Logger.h"
 #include <cerrno>
 
+unsigned User::s_iIdleMinutes;
+unsigned User::s_iKickMinutes;
+
 User::User( unsigned iSocket ) : m_Socket(iSocket), m_sName("<no name>")
 {
 	m_pRoom = NULL;

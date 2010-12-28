@@ -81,6 +81,12 @@ void ChatServer::Start()
 			m_pRooms->AddRoom( vsRooms[i] );
 	}
 
+	// set up user idle limits
+	const int iTimeToIdle = m_pConfig->GetInt( "UserIdleTime", 5 );
+	const int iTimeToKick = m_pConfig->GetInt( "UserKickTime", 90 );
+
+	User::SetIdleLimits( iTimeToIdle, iTimeToKick );
+
 	// set up server-side user level stuff.
 	// TODO: synchronization mechanism between database and server?
 	const char* sModLevels = m_pConfig->Get( "ModLevels" );
@@ -367,7 +373,7 @@ void ChatServer::HandleLoginState( User *user )
 		// write 'accepted' response
 		user->Write( ChatPacket(ACCESS_GRANTED).ToString() );
 
-		// write configuration (which was set by the login request)
+		// write user config (which was set by the login request)
 		ChatPacket prefs(CLIENT_CONFIG, BLANK, user->GetPrefs() );
 		user->Write( prefs.ToString() );
 

@@ -4,6 +4,7 @@
 #include <cctype>
 #include <cstddef>
 
+/* XXX: Unix-specific header for strcasecmp and strncasecmp */
 extern "C"
 {
 #include <strings.h>
@@ -95,10 +96,15 @@ time_t StringUtil::ParseTime( const std::string &sMessage )
 		case 'h': case 'H': hours = value; break;
 		case 'm': case 'M': minutes = value; break;
 		case 's': case 'S': seconds = value; break;
-		};
+		}
 	}
 
-	time_t total = seconds + (minutes*60) + (hours*60*60) + (days*24*60*60) + (weeks*7*24*60*60);
+	time_t total = seconds;
+
+	if( minutes )	total += minutes*60;
+	if( hours )	total += hours*60*60;
+	if( days )	total += days*24*60*60;
+	if( weeks )	total += weeks*7*24*60*60;
 
 	// protection against overflow and negative times
 	if( total < 0 )

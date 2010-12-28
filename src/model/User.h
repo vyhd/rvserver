@@ -5,8 +5,8 @@
 #ifndef USER_H
 #define USER_H
 
-/* This is susceptible to the Year 2038 Problem. Oh well.
- * We'll hopefully have replaced it by then, don't you think? */
+/* This is susceptible to the Year 2038 Problem.
+ * We'll hopefully have replaced it by then. */
 #include <ctime>
 #include <string>
 #include "network/Socket.h"
@@ -27,15 +27,8 @@ enum LoginState
 	LOGIN_SERVER_DOWN	/* login failed: no response from server. */
 };
 
-/* idle time limits */
-const unsigned MINUTES_TO_IDLE = 5;
-const unsigned MINUTES_TO_IDLE_KICK = 90;
-
 class User
 {
-	// We only let Room call SetRoom(), for consistency.
-	friend class Room;
-
 public:
 	User( unsigned iSocket );
 	~User();
@@ -95,11 +88,22 @@ public:
 	unsigned GetLastIdleMinute() const { return m_iLastIdleMinute; }
 	void UpdateLastIdle() { m_iLastIdleMinute = GetIdleMinutes(); }
 
-	bool IsIdle() const { return GetIdleMinutes() >= MINUTES_TO_IDLE; }
-	// *boot*
-	bool IsInert() const { return GetIdleMinutes() >= MINUTES_TO_IDLE_KICK; }
+	// if the user is inert, we kick them
+	bool IsIdle() const { return GetIdleMinutes() >= s_iIdleMinutes; }
+	bool IsInert() const { return GetIdleMinutes() >= s_iKickMinutes; }
+
+	static void SetIdleLimits( unsigned idle, unsigned kick )
+	{
+		s_iIdleMinutes = idle, s_iKickMinutes = kick;
+	}
 
 private:
+	/* idle time limits, set by ChatServer */
+	static unsigned s_iIdleMinutes, s_iKickMinutes;
+
+	// We only let Room call SetRoom(), for consistency.
+	friend class Room;
+
 	void SetRoom( Room* p )	{ m_pRoom = p; }
 
 	/* Socket descriptor for this user's connection */

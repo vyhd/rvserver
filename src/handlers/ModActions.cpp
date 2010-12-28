@@ -48,7 +48,7 @@ const string GetAction( uint16_t iCode )
 	case USER_MUTE:		return "muted";
 	case USER_UNMUTE:	return "unmuted";
 	case IP_QUERY:		return "IP queried";
-	default:		return "eaten";
+	default:		return "eaten";		// debugging
 	}
 }
 

@@ -94,7 +94,6 @@ void TimedList::Remove( const string &name_ )
 
 	list<ListEntry>::iterator it = m_Entries.begin();
 
-	// 
 	for( it = m_Entries.begin(); it != m_Entries.end(); ++it )
 		if( &*it == pEntry )
 			break;

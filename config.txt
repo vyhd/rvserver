@@ -4,7 +4,7 @@ Daemonize=0
 // the port this server listens on
 ServerPort=7005
 
-// can be an IP; just needs to be resolveable
+// can be an IP or a host name
 DatabaseHost=www.runevillage.com
 
 // must be relative to DatabaseHost
@@ -15,6 +15,10 @@ BanPage=/ThePub/chatban.php
 // Read/write timeouts for database access, in milliseconds
 DatabaseReadTimeout=1000
 DatabaseWriteTimeout=1000
+
+// user idle limits, in minutes
+UserIdleTime=5
+UserKickTime=90
 
 // if the server can't load config, default to this
 DefaultConfig=theme|Classic|red|0|green|0|blue|0|freezeChat|false|ignoreColors|false|timeStamp|false|beep|true|bleep|true|audio|true
