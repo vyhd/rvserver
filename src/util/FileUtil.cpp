@@ -8,7 +8,8 @@
 #include "StringUtil.h"
 #include "FileUtil.h"
 #include "logger/Logger.h"
-
+#include <cstring>
+#include <stdlib.h>
 using namespace std;
 
 // the mode we apply to our created directories

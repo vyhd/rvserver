@@ -7,6 +7,7 @@
 #include <ctime>
 #include <cstdarg>
 #include <string>
+#include <cstring>
 
 using namespace std;
 using namespace FileUtil;

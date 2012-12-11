@@ -2,6 +2,7 @@
 #include "Room.h"
 #include "logger/Logger.h"
 #include <cerrno>
+#include <cstring>
 
 unsigned User::s_iIdleMinutes;
 unsigned User::s_iKickMinutes;

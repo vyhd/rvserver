@@ -13,6 +13,7 @@
 #include "Config.h"
 #include "logger/Logger.h"
 #include "util/StringUtil.h"
+#include <cstring>
 
 using namespace std;
 

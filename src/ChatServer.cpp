@@ -2,7 +2,7 @@
 #include <cctype>
 #include <cstdlib>
 #include <vector>	// for PacketUtil::Split
-#include <string>	// for memset
+#include <cstring>	// for memset
 
 #include <unistd.h>
 #include <sys/time.h>	// for timestamping

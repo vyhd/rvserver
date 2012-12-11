@@ -1,6 +1,6 @@
 #include <cstring>
 #include <cerrno>
-
+#include <cstdlib>
 #include "ChatServer.h"
 #include "logger/Logger.h"
 #include "model/User.h"
