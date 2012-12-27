@@ -1,6 +1,6 @@
 /* The spinlock is occasionally hanging on itself. I've disabled it for now.
  * If this causes any problems, it's still better than hanging the server... */
-
+#include <cstring>
 #include <cerrno>
 #include "network/DatabaseWorker.h"
 #include "model/User.h"

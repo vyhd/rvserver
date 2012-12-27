@@ -2,7 +2,7 @@
 #include "packet/PacketUtil.h"
 #include <cstdlib>
 #include <vector>
-
+#include <cstdio>
 using namespace std;
 
 ChatPacket::ChatPacket() : iCode( INVALID_CODE )

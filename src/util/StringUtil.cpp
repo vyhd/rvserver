@@ -3,7 +3,9 @@
 #include <cstdarg>
 #include <cctype>
 #include <cstddef>
-
+#include <cstring>
+#include <stdlib.h>
+#include <cstdio>
 /* XXX: Unix-specific header for strcasecmp and strncasecmp */
 extern "C"
 {
@@ -19,9 +21,9 @@ const unsigned DAY = HOUR * 24;
 const unsigned WEEK = DAY * 7;
 const unsigned YEAR = WEEK * 52;
 
-void StringUtil::ToLower( std::string &in )
+void StringUtil::ToLower( ::string &in )
 {
-	transform( in.begin(), in.end(), in.begin(), tolower );
+	transform( in.begin(), in.end(), in.begin(),::tolower );
 }
 
 /* Lowercases two strings, performing an essentially case-insensitive match. */
